@@ -32,3 +32,5 @@
 ## Notes for contributors
 - Since there is no existing source tree, start with minimal scaffolding and iterate from the documented requirements.
 - Avoid over-engineering; a straightforward implementation is preferred in this workspace.
+
+## teste
