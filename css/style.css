@@ -1,121 +1,200 @@
+:root {
+    --bg: #f4f5f7;
+    --text: #333;
+    --header-bg: #1e4b7d;
+    --header-text: #ffffff;
+    --card-bg: #ffffff;
+    --border: #e0e4ea;
+    --input-bg: #ffffff;
+    --input-border: #ccd0d9;
+    --button-bg: #1e4b7d;
+    --button-color: #ffffff;
+    --button-hover: #153b61;
+    --link-color: #1e4b7d;
+    --table-bg: #ffffff;
+    --footer-text: #666;
+    --flash-success-bg: #d4f0dd;
+    --flash-success-border: #8fd19b;
+    --flash-error-bg: #fde2df;
+    --flash-error-border: #f0a09c;
+    --action-bg: #0f6d3f;
+    --action-hover: #0b562f;
+}
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #f4f5f7;
-    color: #333;
+    background: var(--bg);
+    color: var(--text);
 }
+
+html.theme-dark,
+body.theme-dark {
+    --bg: #121214;
+    --text: #e7e9ee;
+    --header-bg: #0f172a;
+    --header-text: #f8fafc;
+    --card-bg: #1d2230;
+    --border: #2b3448;
+    --input-bg: #152033;
+    --input-border: #33415c;
+    --button-bg: #2563eb;
+    --button-color: #ffffff;
+    --button-hover: #1d4ed8;
+    --link-color: #60a5fa;
+    --table-bg: #152033;
+    --footer-text: #a5b4fc;
+    --flash-success-bg: #163d1e;
+    --flash-success-border: #166534;
+    --flash-error-bg: #581c1c;
+    --flash-error-border: #991b1b;
+    --action-bg: #0d9488;
+    --action-hover: #0f766e;
+}
+
 header {
-    background: #1e4b7d;
-    color: white;
+    background: var(--header-bg);
+    color: var(--header-text);
     padding: 12px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
 }
+
 header .brand a {
-    color: white;
+    color: var(--header-text);
     text-decoration: none;
     font-weight: bold;
     font-size: 1.1rem;
 }
+
 header nav {
     display: flex;
     gap: 12px;
     align-items: center;
 }
+
 header nav a {
-    color: white;
+    color: var(--header-text);
     text-decoration: none;
 }
+
 header .nav-user {
     font-size: 0.95rem;
     opacity: 0.85;
 }
+
 main {
     max-width: 1080px;
     margin: 24px auto;
     padding: 0 20px;
 }
+
 footer {
     padding: 16px 20px;
     text-align: center;
-    color: #666;
+    color: var(--footer-text);
 }
+
 .card {
-    background: white;
+    background: var(--card-bg);
     border-radius: 8px;
     padding: 18px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     margin-bottom: 20px;
 }
+
 .form-group {
     margin-bottom: 16px;
 }
+
 .form-group label {
     display: block;
     margin-bottom: 6px;
     font-weight: bold;
 }
+
 .form-group input,
 .form-group select,
 .form-group textarea {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ccd0d9;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     font-size: 1rem;
+    background: var(--input-bg);
+    color: var(--text);
 }
+
 button,
 input[type="submit"] {
-    background: #1e4b7d;
-    color: white;
+    background: var(--button-bg);
+    color: var(--button-color);
     border: none;
     padding: 12px 18px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 1rem;
 }
+
 button:hover,
 input[type="submit"]:hover {
-    background: #153b61;
+    background: var(--button-hover);
 }
+
+button#theme-toggle {
+    min-width: 120px;
+}
+
+a {
+    color: var(--link-color);
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 12px;
+    background: var(--table-bg);
 }
+
 table th,
 table td {
     padding: 12px;
-    border-bottom: 1px solid #e0e4ea;
+    border-bottom: 1px solid var(--border);
     text-align: left;
 }
+
 .flash {
     padding: 14px 18px;
     border-radius: 8px;
     margin-bottom: 18px;
 }
+
 .flash.success {
-    background: #d4f0dd;
-    border: 1px solid #8fd19b;
+    background: var(--flash-success-bg);
+    border: 1px solid var(--flash-success-border);
 }
+
 .flash.error {
-    background: #fde2df;
-    border: 1px solid #f0a09c;
+    background: var(--flash-error-bg);
+    border: 1px solid var(--flash-error-border);
 }
+
 .actions {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
 }
+
 .actions a {
     display: inline-block;
-    background: #0f6d3f;
+    background: var(--action-bg);
     color: white;
     padding: 8px 12px;
     border-radius: 6px;
     text-decoration: none;
 }
+
 .actions a:hover {
-    background: #0b562f;
+    background: var(--action-hover);
 }

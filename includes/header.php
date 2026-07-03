@@ -18,6 +18,7 @@ $flash = get_flash();
 <header>
     <div class="brand"><a href="<?php echo h(base_url('index.php')); ?>"><?php echo h(SITE_NAME); ?></a></div>
     <nav>
+        <button id="theme-toggle" type="button">Tema escuro</button>
         <a href="<?php echo h(base_url('index.php')); ?>">Catálogo</a>
         <?php if ($user): ?>
             <a href="<?php echo h(base_url('dashboard.php')); ?>">Painel</a>

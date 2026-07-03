@@ -2,5 +2,34 @@
 <footer>
     <p>&copy; <?php echo date('Y'); ?> <?php echo h(SITE_NAME); ?>.</p>
 </footer>
+<script>
+(function() {
+    const toggle = document.getElementById('theme-toggle');
+    if (!toggle) return;
+
+    const root = document.documentElement;
+    const body = document.body;
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+
+    root.classList.toggle('theme-dark', isDark);
+    body.classList.toggle('theme-dark', isDark);
+
+    function updateButton() {
+        const active = root.classList.contains('theme-dark');
+        toggle.textContent = active ? 'Tema claro' : 'Tema escuro';
+    }
+
+    updateButton();
+
+    toggle.addEventListener('click', function() {
+        const active = root.classList.toggle('theme-dark');
+        body.classList.toggle('theme-dark', active);
+        localStorage.setItem('theme', active ? 'dark' : 'light');
+        updateButton();
+    });
+})();
+</script>
 </body>
 </html>
