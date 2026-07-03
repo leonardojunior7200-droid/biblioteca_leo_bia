@@ -21,7 +21,11 @@ $flash = get_flash();
         <button id="theme-toggle" type="button">Tema escuro</button>
         <a href="<?php echo h(base_url('index.php')); ?>">Catálogo</a>
         <?php if ($user): ?>
-            <a href="<?php echo h(base_url('dashboard.php')); ?>">Painel</a>
+            <?php if (user_has_role('Aluno')): ?>
+                <a href="<?php echo h(base_url('student_dashboard.php')); ?>">Painel do Aluno</a>
+            <?php else: ?>
+                <a href="<?php echo h(base_url('dashboard.php')); ?>">Painel</a>
+            <?php endif; ?>
             <?php if (user_has_role(['Administrador', 'Bibliotecário'])): ?>
                 <a href="<?php echo h(base_url('books.php')); ?>">Livros</a>
                 <a href="<?php echo h(base_url('loans.php')); ?>">Empréstimos</a>
@@ -32,6 +36,7 @@ $flash = get_flash();
             <span class="nav-user">Olá, <?php echo h($user['name']); ?> (<?php echo h($user['role_name']); ?>)</span>
         <?php else: ?>
             <a href="<?php echo h(base_url('login.php')); ?>">Login</a>
+            <a href="<?php echo h(base_url('register.php')); ?>">Cadastro</a>
         <?php endif; ?>
     </nav>
 </header>

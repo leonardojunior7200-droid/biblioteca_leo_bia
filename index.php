@@ -17,9 +17,9 @@ try {
     <h1>Bem-vindo à <?php echo h(SITE_NAME); ?></h1>
     <p>Este sistema de biblioteca escolar gerencia livros, empréstimos, devoluções e reservas.</p>
     <?php if (is_logged_in()): ?>
-        <p><a href="<?php echo h(base_url('dashboard.php')); ?>">Ir para o painel</a></p>
+        <p><a class="btn-panel" href="<?php echo h(base_url('dashboard.php')); ?>">Ir para o painel</a></p>
     <?php else: ?>
-        <p><a href="<?php echo h(base_url('login.php')); ?>">Entrar no sistema</a></p>
+        <p><a class="btn-panel" href="<?php echo h(base_url('login.php')); ?>">Entrar no sistema</a></p>
     <?php endif; ?>
 </div>
 

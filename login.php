@@ -47,7 +47,8 @@ require_once __DIR__ . '/includes/header.php';
             <label for="password">Senha</label>
             <input type="password" id="password" name="password" required>
         </div>
-        <input type="submit" value="Entrar">
+        <input type="submit" class="btn-login" value="Entrar">
     </form>
+    <p><a href="<?php echo h(base_url('register.php')); ?>">Ainda não tenho conta. Cadastrar-se</a></p>
 </div>
 <?php require_once __DIR__ . '/includes/footer.php';

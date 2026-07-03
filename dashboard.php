@@ -3,6 +3,10 @@ require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();
 
+if (user_has_role('Aluno')) {
+    redirect('student_dashboard.php');
+}
+
 $stats = [
     'books' => 0,
     'loans' => 0,
