@@ -20,3 +20,49 @@ function get_db(): PDO
 
     return $db;
 }
+
+function ensure_user_profile_photo_column(): void
+{
+    $db = get_db();
+
+    try {
+        $columns = $db->query('PRAGMA table_info(users)')->fetchAll();
+    } catch (Exception $e) {
+        return;
+    }
+
+    $hasColumn = false;
+    foreach ($columns as $column) {
+        if (($column['name'] ?? '') === 'profile_photo') {
+            $hasColumn = true;
+            break;
+        }
+    }
+
+    if (!$hasColumn) {
+        $db->exec('ALTER TABLE users ADD COLUMN profile_photo TEXT');
+    }
+}
+
+function ensure_book_pdf_column(): void
+{
+    $db = get_db();
+
+    try {
+        $columns = $db->query('PRAGMA table_info(books)')->fetchAll();
+    } catch (Exception $e) {
+        return;
+    }
+
+    $hasColumn = false;
+    foreach ($columns as $column) {
+        if (($column['name'] ?? '') === 'pdf_path') {
+            $hasColumn = true;
+            break;
+        }
+    }
+
+    if (!$hasColumn) {
+        $db->exec('ALTER TABLE books ADD COLUMN pdf_path TEXT');
+    }
+}

@@ -5,10 +5,12 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+ensure_user_profile_photo_column();
+
 function login_user(int $userId): void
 {
     $db = get_db();
-    $stmt = $db->prepare('SELECT u.id, u.name, u.email, u.role_id, r.name AS role_name, u.blocked FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :id');
+    $stmt = $db->prepare('SELECT u.id, u.name, u.email, u.role_id, r.name AS role_name, u.blocked, u.profile_photo FROM users u JOIN roles r ON u.role_id = r.id WHERE u.id = :id');
     $stmt->execute([':id' => $userId]);
     $user = $stmt->fetch();
 

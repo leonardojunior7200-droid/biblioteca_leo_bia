@@ -33,4 +33,12 @@
 - Since there is no existing source tree, start with minimal scaffolding and iterate from the documented requirements.
 - Avoid over-engineering; a straightforward implementation is preferred in this workspace.
 
+## Recent implementation notes
+- The interface now uses a more polished visual style with improved typography, spacing, headers, cards, buttons, and table readability.
+- Shared CSS was updated to improve contrast and readability in both light and dark themes.
+- Dark mode was specifically refined for registration, reservations, and general form content so labels, inputs, and messages remain clearly visible.
+- The admin dashboard now includes a reading overview section showing the most-read and least-read books based on loan data.
+- The student dashboard now supports profile photo updates with default avatar choices for feminine, masculine, and library-themed visuals.
+- The main UI files involved in these changes are [css/style.css](css/style.css), [includes/header.php](includes/header.php), [reservations.php](reservations.php), [register.php](register.php), [student_dashboard.php](student_dashboard.php), and [includes/auth.php](includes/auth.php).
+
 ## teste

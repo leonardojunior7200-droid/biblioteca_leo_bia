@@ -4,6 +4,8 @@ require_once __DIR__ . '/includes/functions.php';
 
 try {
     $db = get_db();
+    ensure_user_profile_photo_column();
+    ensure_book_pdf_column();
 
     $db->exec('CREATE TABLE IF NOT EXISTS roles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

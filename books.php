@@ -5,6 +5,7 @@ require_login();
 require_role(['Administrador', 'Bibliotecário']);
 
 $db = get_db();
+ensure_book_pdf_column();
 try {
     $db->exec('ALTER TABLE books ADD COLUMN cover_path TEXT');
 } catch (Exception $e) {
@@ -26,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $shelf = trim($_POST['shelf'] ?? '');
     $internal_code = trim($_POST['internal_code'] ?? '');
     $coverPath = null;
+    $pdfPath = null;
 
     if ($title === '' || $author === '' || $category === '') {
         $error = 'Título, autor e categoria são obrigatórios.';
@@ -69,6 +71,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        if (isset($_FILES['pdf']) && $_FILES['pdf']['error'] !== UPLOAD_ERR_NO_FILE) {
+            if ($_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
+                $error = 'Falha ao enviar o PDF do livro.';
+            } else {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $_FILES['pdf']['tmp_name']);
+                finfo_close($finfo);
+
+                if ($mimeType !== 'application/pdf') {
+                    $error = 'O arquivo deve ser um PDF válido.';
+                } elseif ($_FILES['pdf']['size'] > 5 * 1024 * 1024) {
+                    $error = 'O PDF deve ter no máximo 5 MB.';
+                } else {
+                    $uploadDir = __DIR__ . '/uploads/books';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0777, true);
+                    }
+
+                    $fileName = 'book_pdf_' . time() . '_' . bin2hex(random_bytes(4)) . '.pdf';
+                    $destination = $uploadDir . '/' . $fileName;
+
+                    if (!move_uploaded_file($_FILES['pdf']['tmp_name'], $destination)) {
+                        $error = 'Não foi possível salvar o PDF do livro.';
+                    } else {
+                        $pdfPath = 'uploads/books/' . $fileName;
+                    }
+                }
+            }
+        }
+
         if ($error === null) {
             if (!empty($id)) {
                 $currentBook = $db->prepare('SELECT cover_path FROM books WHERE id = :id');
@@ -84,7 +116,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
-                $stmt = $db->prepare('UPDATE books SET title = :title, author = :author, category = :category, isbn = :isbn, publisher = :publisher, year = :year, quantity = :quantity, shelf = :shelf, internal_code = :internal_code, cover_path = :cover_path WHERE id = :id');
+                $currentBook = $db->prepare('SELECT pdf_path FROM books WHERE id = :id');
+                $currentBook->execute([':id' => $id]);
+                $currentPdf = $currentBook->fetchColumn();
+
+                if ($pdfPath === null && $currentPdf) {
+                    $pdfPath = $currentPdf;
+                } elseif ($pdfPath !== null && $currentPdf && $currentPdf !== $pdfPath) {
+                    $oldFile = __DIR__ . '/' . $currentPdf;
+                    if (is_file($oldFile)) {
+                        unlink($oldFile);
+                    }
+                }
+
+                $stmt = $db->prepare('UPDATE books SET title = :title, author = :author, category = :category, isbn = :isbn, publisher = :publisher, year = :year, quantity = :quantity, shelf = :shelf, internal_code = :internal_code, cover_path = :cover_path, pdf_path = :pdf_path WHERE id = :id');
                 $stmt->execute([
                     ':title' => $title,
                     ':author' => $author,
@@ -96,11 +141,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':shelf' => $shelf,
                     ':internal_code' => $internal_code,
                     ':cover_path' => $coverPath,
+                    ':pdf_path' => $pdfPath,
                     ':id' => $id,
                 ]);
                 set_flash('Livro atualizado com sucesso.');
             } else {
-                $stmt = $db->prepare('INSERT INTO books (title, author, category, isbn, publisher, year, quantity, shelf, internal_code, cover_path) VALUES (:title, :author, :category, :isbn, :publisher, :year, :quantity, :shelf, :internal_code, :cover_path)');
+                $stmt = $db->prepare('INSERT INTO books (title, author, category, isbn, publisher, year, quantity, shelf, internal_code, cover_path, pdf_path) VALUES (:title, :author, :category, :isbn, :publisher, :year, :quantity, :shelf, :internal_code, :cover_path, :pdf_path)');
                 $stmt->execute([
                     ':title' => $title,
                     ':author' => $author,
@@ -112,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':shelf' => $shelf,
                     ':internal_code' => $internal_code,
                     ':cover_path' => $coverPath,
+                    ':pdf_path' => $pdfPath,
                 ]);
                 set_flash('Livro cadastrado com sucesso.');
             }
@@ -122,20 +169,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'delete' && $id) {
-    $stmt = $db->prepare('SELECT cover_path FROM books WHERE id = :id');
+    $stmt = $db->prepare('SELECT cover_path, pdf_path FROM books WHERE id = :id');
     $stmt->execute([':id' => $id]);
-    $currentCover = $stmt->fetchColumn();
+    $currentBookFiles = $stmt->fetch();
 
-    if ($currentCover) {
-        $oldFile = __DIR__ . '/' . $currentCover;
-        if (is_file($oldFile)) {
-            unlink($oldFile);
+    try {
+        $loanCountStmt = $db->prepare('SELECT COUNT(*) FROM loans WHERE book_id = :id');
+        $loanCountStmt->execute([':id' => $id]);
+        $loanCount = (int)$loanCountStmt->fetchColumn();
+
+        $reservationCountStmt = $db->prepare('SELECT COUNT(*) FROM reservations WHERE book_id = :id');
+        $reservationCountStmt->execute([':id' => $id]);
+        $reservationCount = (int)$reservationCountStmt->fetchColumn();
+
+        if ($loanCount > 0) {
+            $deleteLoans = $db->prepare('DELETE FROM loans WHERE book_id = :id');
+            $deleteLoans->execute([':id' => $id]);
         }
+
+        if ($reservationCount > 0) {
+            $deleteReservations = $db->prepare('DELETE FROM reservations WHERE book_id = :id');
+            $deleteReservations->execute([':id' => $id]);
+        }
+
+        if (!empty($currentBookFiles['cover_path'])) {
+            $oldFile = __DIR__ . '/' . $currentBookFiles['cover_path'];
+            if (is_file($oldFile)) {
+                unlink($oldFile);
+            }
+        }
+
+        if (!empty($currentBookFiles['pdf_path'])) {
+            $oldPdfFile = __DIR__ . '/' . $currentBookFiles['pdf_path'];
+            if (is_file($oldPdfFile)) {
+                unlink($oldPdfFile);
+            }
+        }
+
+        $stmt = $db->prepare('DELETE FROM books WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        set_flash('Livro excluído com sucesso. Registros de empréstimos e reservas vinculados também foram removidos.', 'success');
+    } catch (Exception $e) {
+        set_flash('Não foi possível excluir o livro no momento.', 'error');
     }
 
-    $stmt = $db->prepare('DELETE FROM books WHERE id = :id');
-    $stmt->execute([':id' => $id]);
-    set_flash('Livro excluído.');
     redirect('books.php');
 }
 
@@ -200,6 +277,13 @@ require_once __DIR__ . '/includes/header.php';
                 <input type="text" id="internal_code" name="internal_code" value="<?php echo h($book['internal_code'] ?? ''); ?>">
             </div>
             <div class="form-group">
+                <label for="pdf">PDF do livro (opcional)</label>
+                <input type="file" id="pdf" name="pdf" accept="application/pdf">
+                <?php if (!empty($book['pdf_path'])): ?>
+                    <p class="muted">PDF já enviado.</p>
+                <?php endif; ?>
+            </div>
+            <div class="form-group">
                 <label for="cover">Foto do livro (opcional)</label>
                 <input type="file" id="cover" name="cover" accept="image/*">
                 <?php if (!empty($book['cover_path'])): ?>
@@ -246,6 +330,11 @@ require_once __DIR__ . '/includes/header.php';
                         <td>
                             <a href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>">Editar</a>
                             <a href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');">Excluir</a>
+                            <?php if (!empty($item['pdf_path'])): ?>
+                                <a href="view_book_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener">Ver PDF</a>
+                            <?php else: ?>
+                                <span class="muted">Sem PDF</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
