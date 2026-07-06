@@ -12,6 +12,9 @@ $flash = get_flash();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo h(SITE_NAME); ?></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo h(base_url('css/style.css')); ?>">
 </head>
 <body>
@@ -19,6 +22,7 @@ $flash = get_flash();
     <div class="brand"><a href="<?php echo h(base_url('index.php')); ?>"><?php echo h(SITE_NAME); ?></a></div>
     <nav>
         <button id="theme-toggle" type="button">Tema escuro</button>
+        <button id="background-toggle" type="button">Ocultar fundo</button>
         <a href="<?php echo h(base_url('index.php')); ?>">Catálogo</a>
         <?php if ($user): ?>
             <?php if (user_has_role('Aluno')): ?>

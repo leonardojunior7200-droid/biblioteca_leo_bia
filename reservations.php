@@ -46,7 +46,7 @@ if (!user_has_role(['Administrador', 'Bibliotecário'])) {
 }
 $reservationsQuery .= ' ORDER BY r.reserved_at DESC';
 $reservations = $db->query($reservationsQuery)->fetchAll();
-$books = $db->query('SELECT id, title, quantity FROM books ORDER BY title')->fetchAll();
+$books = $db->query('SELECT id, title, quantity, cover_path FROM books ORDER BY title')->fetchAll();
 
 require_once __DIR__ . '/includes/header.php';
 ?>
@@ -60,10 +60,11 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="card">
     <h2>Nova reserva</h2>
-    <p>Escolha um livro para reservar.</p>
+    <p style="margin-top: 6px; color: #22384f; font-weight: 600;">Escolha um livro para reservar.</p>
     <table>
         <thead>
             <tr>
+                <th>Foto</th>
                 <th>Título</th>
                 <th>Disponível</th>
                 <th>Ação</th>
@@ -72,6 +73,13 @@ require_once __DIR__ . '/includes/header.php';
         <tbody>
             <?php foreach ($books as $book): ?>
                 <tr>
+                    <td>
+                        <?php if (!empty($book['cover_path'])): ?>
+                            <img src="<?php echo h(base_url($book['cover_path'])); ?>" alt="Foto do livro" style="max-width: 60px; max-height: 60px; object-fit: cover;">
+                        <?php else: ?>
+                            <span>Sem foto</span>
+                        <?php endif; ?>
+                    </td>
                     <td><?php echo h($book['title']); ?></td>
                     <td><?php echo (int)$book['quantity']; ?></td>
                     <td>
@@ -86,7 +94,7 @@ require_once __DIR__ . '/includes/header.php';
 <div class="card">
     <h2>Lista de reservas</h2>
     <?php if (empty($reservations)): ?>
-        <p>Sem reservas registradas.</p>
+        <p style="margin-top: 8px; color: #22384f; font-weight: 600;">Sem reservas registradas.</p>
     <?php else: ?>
         <table>
             <thead>

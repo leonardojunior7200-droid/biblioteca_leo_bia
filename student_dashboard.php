@@ -15,7 +15,7 @@ if ($search !== '') {
     $params[':search'] = '%' . $search . '%';
 }
 
-$books = $db->prepare('SELECT id, title, author, category, quantity FROM books ' . $searchQuery . ' ORDER BY title');
+$books = $db->prepare('SELECT id, title, author, category, quantity, cover_path FROM books ' . $searchQuery . ' ORDER BY title');
 $books->execute($params);
 $books = $books->fetchAll();
 
@@ -52,6 +52,7 @@ require_once __DIR__ . '/includes/header.php';
         <table>
             <thead>
                 <tr>
+                    <th>Foto</th>
                     <th>Título</th>
                     <th>Autor</th>
                     <th>Categoria</th>
@@ -61,6 +62,13 @@ require_once __DIR__ . '/includes/header.php';
             <tbody>
                 <?php foreach ($books as $book): ?>
                     <tr>
+                        <td>
+                            <?php if (!empty($book['cover_path'])): ?>
+                                <img src="<?php echo h(base_url($book['cover_path'])); ?>" alt="Foto do livro" style="max-width: 60px; max-height: 60px; object-fit: cover;">
+                            <?php else: ?>
+                                <span>Sem foto</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo h($book['title']); ?></td>
                         <td><?php echo h($book['author']); ?></td>
                         <td><?php echo h($book['category']); ?></td>

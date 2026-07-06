@@ -7,7 +7,7 @@ $hasData = true;
 
 try {
     $db = get_db();
-    $stmt = $db->query('SELECT id, title, author, category, quantity FROM books ORDER BY title LIMIT 10');
+    $stmt = $db->query('SELECT id, title, author, category, quantity, cover_path FROM books ORDER BY title LIMIT 10');
     $books = $stmt->fetchAll();
 } catch (Exception $e) {
     $hasData = false;
@@ -33,6 +33,7 @@ try {
         <table>
             <thead>
                 <tr>
+                    <th>Foto</th>
                     <th>Título</th>
                     <th>Autor</th>
                     <th>Categoria</th>
@@ -42,6 +43,13 @@ try {
             <tbody>
                 <?php foreach ($books as $book): ?>
                     <tr>
+                        <td>
+                            <?php if (!empty($book['cover_path'])): ?>
+                                <img src="<?php echo h(base_url($book['cover_path'])); ?>" alt="Foto do livro" style="max-width: 60px; max-height: 60px; object-fit: cover;">
+                            <?php else: ?>
+                                <span>Sem foto</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo h($book['title']); ?></td>
                         <td><?php echo h($book['author']); ?></td>
                         <td><?php echo h($book['category']); ?></td>
