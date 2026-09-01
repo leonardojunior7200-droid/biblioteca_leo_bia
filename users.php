@@ -5,11 +5,12 @@ require_login();
 require_role(['Administrador', 'Bibliotecário']);
 
 $db = get_db();
+$csrfToken = csrf_token();
 ensure_parent_columns();
 
 $error = null;
-$search = trim($_GET['search'] ?? '');
-$filterTurma = trim($_GET['turma'] ?? '');
+$search = trim((string)($_GET['search'] ?? ''));
+$filterTurma = trim((string)($_GET['turma'] ?? ''));
 
 $turmas = [
     '6º Ano A', '6º Ano B',
@@ -25,15 +26,22 @@ $turnos = ['Manhã', 'Tarde'];
 
 // Atualização de dados do aluno/responsável pelo Admin/Bibliotecário
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_user') {
-    $targetUserId = (int)($_POST['user_id'] ?? 0);
-    $name = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $turma = trim($_POST['turma'] ?? '');
-    $turno = trim($_POST['turno'] ?? '');
-    $parentName = trim($_POST['parent_name'] ?? '');
-    $parentPhone = trim($_POST['parent_phone'] ?? '');
-    $parentEmail = trim($_POST['parent_email'] ?? '');
-    $parentDoc = trim($_POST['parent_document'] ?? '');
+    $postCsrf = trim((string)($_POST['csrf_token'] ?? ''));
+    if (!verify_csrf_token($postCsrf)) {
+        http_response_code(419);
+        set_flash('Sessão expirada ou token inválido.', 'error');
+        redirect('users.php');
+    }
+
+    $targetUserId = require_positive_int($_POST['user_id'] ?? null) ?? 0;
+    $name = trim((string)($_POST['name'] ?? ''));
+    $email = trim((string)($_POST['email'] ?? ''));
+    $turma = trim((string)($_POST['turma'] ?? ''));
+    $turno = trim((string)($_POST['turno'] ?? ''));
+    $parentName = trim((string)($_POST['parent_name'] ?? ''));
+    $parentPhone = trim((string)($_POST['parent_phone'] ?? ''));
+    $parentEmail = trim((string)($_POST['parent_email'] ?? ''));
+    $parentDoc = trim((string)($_POST['parent_document'] ?? ''));
     $blocked = isset($_POST['blocked']) ? 1 : 0;
 
     if ($targetUserId > 0 && $name !== '' && $email !== '') {
@@ -59,7 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Alteração rápida de bloqueio
 if (isset($_GET['toggle_block'])) {
-    $toggleId = (int)$_GET['toggle_block'];
+    $toggleId = require_positive_int($_GET['toggle_block'] ?? null);
+    if ($toggleId === null) {
+        set_flash('Identificador do usuário inválido.', 'error');
+        redirect('users.php');
+    }
+
     $stmt = $db->prepare('UPDATE users SET blocked = CASE WHEN blocked = 1 THEN 0 ELSE 1 END WHERE id = :id');
     $stmt->execute([':id' => $toggleId]);
     set_flash('Status de bloqueio do usuário alterado.');
@@ -320,9 +333,12 @@ require_once __DIR__ . '/includes/header.php';
                                     </td>
                                     <td style="white-space: nowrap;">
                                         <a class="action-link" href="users.php?edit=<?php echo (int)$u['id']; ?>" style="margin-right: 0.5rem;">✏️ Editar</a>
-                                        <a class="soft-link" href="users.php?toggle_block=<?php echo (int)$u['id']; ?>" onclick="return confirm('Alterar status deste usuário?');">
-                                            <?php echo !empty($u['blocked']) ? 'Desbloquear' : 'Bloquear'; ?>
-                                        </a>
+                                        <form method="post" action="users.php?toggle_block=<?php echo (int)$u['id']; ?>" style="display:inline; margin:0;">
+                                            <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                            <button type="submit" class="soft-link" onclick="return confirm('Alterar status deste usuário?');" style="background:none; border:none; padding:0; cursor:pointer;">
+                                                <?php echo !empty($u['blocked']) ? 'Desbloquear' : 'Bloquear'; ?>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

@@ -6,6 +6,7 @@ require_login();
 require_role(['Administrador', 'Bibliotecário']);
 
 $db = get_db();
+$csrfToken = csrf_token();
 ensure_book_pdf_column();
 ensure_book_barcode_column();
 ensure_book_shelf_column();
@@ -15,22 +16,34 @@ try {
     // Ignore when the column already exists.
 }
 
-$action = $_GET['action'] ?? '';
-$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$action = isset($_GET['action']) ? trim((string)$_GET['action']) : '';
+$id = require_positive_int($_GET['id'] ?? null);
 $error = null;
-$search = trim($_GET['search'] ?? '');
+$search = trim((string)($_GET['search'] ?? ''));
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim($_POST['title'] ?? '');
-    $author = trim($_POST['author'] ?? '');
-    $category = trim($_POST['category'] ?? '');
-    $isbn = trim($_POST['isbn'] ?? '');
-    $barcode = normalize_barcode(trim($_POST['barcode'] ?? ''));
-    $publisher = trim($_POST['publisher'] ?? '');
-    $year = trim($_POST['year'] ?? '');
+    $postCsrf = trim((string)($_POST['csrf_token'] ?? ''));
+    if (!verify_csrf_token($postCsrf)) {
+        http_response_code(419);
+        set_flash('Sessão expirada ou token inválido.', 'error');
+        redirect('books.php');
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = isset($_POST['action']) ? trim((string)$_POST['action']) : $action;
+    $id = require_positive_int($_POST['id'] ?? $_GET['id'] ?? null) ?? $id;
+
+    $title = trim((string)($_POST['title'] ?? ''));
+    $author = trim((string)($_POST['author'] ?? ''));
+    $category = trim((string)($_POST['category'] ?? ''));
+    $isbn = trim((string)($_POST['isbn'] ?? ''));
+    $barcode = normalize_barcode(trim((string)($_POST['barcode'] ?? '')));
+    $publisher = trim((string)($_POST['publisher'] ?? ''));
+    $year = trim((string)($_POST['year'] ?? ''));
     $quantity = (int)($_POST['quantity'] ?? 0);
-    $shelf = trim($_POST['shelf'] ?? '');
-    $internal_code = trim($_POST['internal_code'] ?? '');
+    $shelf = trim((string)($_POST['shelf'] ?? ''));
+    $internal_code = trim((string)($_POST['internal_code'] ?? ''));
     $coverPath = null;
     $pdfPath = null;
 
@@ -176,29 +189,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'delete' && $id) {
-    // Verificar senha de confirmação antes de excluir
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['confirm_password']) || $_POST['confirm_password'] !== 'admin123') {
-        // Exibir formulário de confirmação de senha
-        $book = null;
-        $stmt = $db->prepare('SELECT * FROM books WHERE id = :id');
-        $stmt->execute([':id' => $id]);
-        $book = $stmt->fetch();
-
-        if (!$book) {
-            set_flash('Livro não encontrado.', 'error');
-            redirect('books.php');
-        }
-
-        // Redirecionar para a mesma página com parâmetros para mostrar o formulário de confirmação
-        // Vamos armazenar o ID na sessão ou usar GET com um token simples
-        $_SESSION['delete_book_id'] = $id;
-        $_SESSION['delete_action'] = 'book';
-        redirect('books.php?confirm_delete=1');
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        set_flash('A exclusão de livros deve ser confirmada através do formulário do sistema.', 'error');
+        redirect('books.php');
     }
-
-    // Limpar variáveis de sessão após confirmação
-    unset($_SESSION['delete_book_id']);
-    unset($_SESSION['delete_action']);
 
     $stmt = $db->prepare('SELECT cover_path, pdf_path FROM books WHERE id = :id');
     $stmt->execute([':id' => $id]);
@@ -325,6 +319,7 @@ require_once __DIR__ . '/includes/header.php';
                         <div class="flash error"><?php echo h($error); ?></div>
                     <?php endif; ?>
                     <form method="post" action="books.php<?php echo $action === 'edit' ? '?action=edit&id=' . (int)$id : ''; ?>" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
                         <div class="form-group">
                             <label for="title">Título</label>
                             <input type="text" id="title" name="title" value="<?php echo h($book['title'] ?? ''); ?>" required>
@@ -463,7 +458,10 @@ require_once __DIR__ . '/includes/header.php';
                                             <div class="tooltip-isbn"><?php echo h($item['isbn'] ?: 'SEM ISBN'); ?></div>
                                             <div class="tooltip-actions">
                                                 <a class="tooltip-btn edit" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>">Editar</a>
-                                                <a class="tooltip-btn delete" href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');">Excluir</a>
+                                                <form method="post" action="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" style="flex:1; margin:0;">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                                    <button type="submit" class="tooltip-btn delete" onclick="return confirm('Tem certeza que deseja excluir este livro?');">Excluir</button>
+                                                </form>
                                             </div>
                                         </div>
                                     </div>
@@ -504,7 +502,10 @@ require_once __DIR__ . '/includes/header.php';
                                             <td>
                                                 <div class="table-actions">
                                                     <a class="icon-btn" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>" title="Editar">✏️</a>
-                                                    <a class="icon-btn" href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');" title="Excluir">🗑️</a>
+                                                    <form method="post" action="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" style="display:inline; margin:0;">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                                        <button type="submit" class="icon-btn" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este livro?');" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                                                    </form>
                                                     <?php if (!empty($item['pdf_path'])): ?>
                                                         <a class="icon-btn" href="view_book_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener" title="Ver PDF">📄</a>
                                                     <?php endif; ?>
