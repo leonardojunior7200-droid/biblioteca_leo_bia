@@ -11,6 +11,7 @@ define('DB_PASS', null);
 define('SITE_NAME', 'Biblioteca Escolar');
 define('MAX_LOANS_PER_USER', 2);
 define('LOAN_DAYS', 30);
+define('LOAN_DAY_OPTIONS', [7, 15, 30, 60]);
 
 // Base URL for relative links. Adjust if the app is deployed under a subdirectory.
 define('BASE_URL', '/biblioteca/');

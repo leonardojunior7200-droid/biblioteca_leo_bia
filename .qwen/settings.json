@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(c:/xabi/htdocs/biblioteca/includes/**)",
+      "Read(c:/xabmp/htdocs/biblioteca/includes/**)",
+      "Read(c:/xabmp/htdocs/biblioteca/**)"
+    ]
+  },
+  "$version": 4
+}

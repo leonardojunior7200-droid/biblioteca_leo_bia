@@ -8,7 +8,6 @@ require_role(['Administrador', 'Bibliotecário']);
 $db = get_db();
 ensure_book_pdf_column();
 ensure_book_barcode_column();
-ensure_book_shelf_column();
 try {
     $db->exec('ALTER TABLE books ADD COLUMN cover_path TEXT');
 } catch (Exception $e) {
@@ -286,17 +285,17 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </div>
             <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">📊</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">📚</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">📖</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">📌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">📊</span><span>Relatórios</span></a>
-                <a class="nav-item active" href="books.php"><span class="nav-icon">📚</span><span>Livros</span></a>
-                <a class="nav-item" href="books.php?action=add"><span class="nav-icon">➕</span><span>Cadastrar livro</span></a>
-                <a class="nav-item" href="users.php"><span class="nav-icon">👥</span><span>Usuários &amp; Pais</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">🚪</span><span>Sair</span></a>
+                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
+                <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
+                <a class="nav-item" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
+                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
+                <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
+                <a class="nav-item active" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
+                <a class="nav-item" href="books.php?action=add"><span class="nav-icon">＋</span><span>Cadastrar livro</span></a>
+                <a class="nav-item" href="users.php"><span class="nav-icon">◌</span><span>Usuários & Pais</span></a>
             </nav>
         </div>
+        <a class="sidebar-logout" href="logout.php"><span>↩</span><span>Sair</span></a>
     </aside>
 
     <div class="dashboard-main-panel">
@@ -394,10 +393,6 @@ require_once __DIR__ . '/includes/header.php';
                         <h2>Lista de livros</h2>
                         <p class="panel-subtitle">Visualize todos os livros cadastrados e suas ações rápidas.</p>
                     </div>
-                    <div class="view-toggle" aria-label="Alternar visualização">
-                        <button type="button" class="toggle-btn active" data-view="shelf">🗃️ Estante</button>
-                        <button type="button" class="toggle-btn" data-view="list">📋 Lista</button>
-                    </div>
                     <a class="primary-btn" href="books.php?action=add">Cadastrar livro</a>
                 </div>
                 <?php if (empty($books)): ?>
@@ -407,166 +402,52 @@ require_once __DIR__ . '/includes/header.php';
                         <p class="empty-state">Nenhum livro cadastrado no sistema.</p>
                     <?php endif; ?>
                 <?php else: ?>
-                    <div id="shelf-view" class="virtual-bookshelf">
-                        <?php
-                        $genreShelfMap = [
-                            'conto' => 'Estante 1 - Conto',
-                            'terror' => 'Estante 2 - Terror',
-                            'romance' => 'Estante 3 - Romance',
-                            'ficcao' => 'Estante 4 - Ficção',
-                            'ficção' => 'Estante 4 - Ficção',
-                            'infantil' => 'Estante 5 - Infantil',
-                            'aventura' => 'Estante 6 - Aventura',
-                            'poesia' => 'Estante 7 - Poesia',
-                            'historia' => 'Estante 8 - História',
-                            'história' => 'Estante 8 - História',
-                            'biografia' => 'Estante 9 - Biografia',
-                            'suspense' => 'Estante 10 - Suspense',
-                            'drama' => 'Estante 11 - Drama',
-                            'educativo' => 'Estante 12 - Educativo',
-                            'didatico' => 'Estante 12 - Educativo',
-                            'didático' => 'Estante 12 - Educativo',
-                        ];
-
-                        $booksByShelf = [];
-                        foreach ($books as $bookItem) {
-                            $categoryValue = strtolower(trim((string)($bookItem['category'] ?? '')));
-                            $shelfName = $genreShelfMap[$categoryValue] ?? 'Estante 13 - Geral';
-                            $booksByShelf[$shelfName][] = $bookItem;
-                        }
-
-                        ksort($booksByShelf, SORT_NATURAL | SORT_FLAG_CASE);
-                        foreach ($booksByShelf as $shelfName => $shelfBooks):
-                        ?>
-                            <div class="shelf">
-                                <div class="shelf-label"><?php echo h($shelfName); ?> <span class="shelf-count">(<?php echo count($shelfBooks); ?>)</span></div>
-                                <?php foreach ($shelfBooks as $item): ?>
-                                    <?php
-                                    $quantity = (int)($item['quantity'] ?? 0);
-                                    $badgeClass = $quantity > 1 ? 'available' : ($quantity > 0 ? 'low' : 'empty');
-                                    $coverPath = !empty($item['cover_path']) ? base_url($item['cover_path']) : '';
-                                    ?>
-                                    <div class="book-item" title="<?php echo h($item['title']); ?> - <?php echo h($item['author']); ?>">
-                                        <div class="book-badge <?php echo $badgeClass; ?>"><?php echo $quantity; ?></div>
-                                        <?php if ($coverPath !== ''): ?>
-                                            <img class="book-cover-img" src="<?php echo h($coverPath); ?>" alt="Capa do livro <?php echo h($item['title']); ?>">
-                                        <?php else: ?>
-                                            <div class="book-spine">
-                                                <div class="book-spine-title"><?php echo h($item['title']); ?></div>
-                                                <div class="book-spine-author"><?php echo h($item['author']); ?></div>
-                                            </div>
-                                        <?php endif; ?>
-                                        <div class="book-tooltip">
-                                            <strong><?php echo h($item['title']); ?></strong>
-                                            <div><?php echo h($item['author']); ?></div>
-                                            <span class="tooltip-category"><?php echo h($item['category']); ?></span>
-                                            <div class="tooltip-isbn"><?php echo h($item['isbn'] ?: 'SEM ISBN'); ?></div>
-                                            <div class="tooltip-actions">
-                                                <a class="tooltip-btn edit" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>">Editar</a>
-                                                <a class="tooltip-btn delete" href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');">Excluir</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div id="list-view" style="display:none;">
-                        <div class="table-wrapper">
-                            <table class="dashboard-table">
-                                <thead>
+                    <div class="table-wrapper">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>Foto</th>
+                                    <th>Título</th>
+                                    <th>Autor</th>
+                                    <th>Patilheira</th>
+                                    <th>Categoria</th>
+                                    <th>Quantidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($books as $item): ?>
                                     <tr>
-                                        <th>Foto</th>
-                                        <th>Título</th>
-                                        <th>Autor</th>
-                                        <th>Estante</th>
-                                        <th>Categoria</th>
-                                        <th>Quantidade</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($books as $item): ?>
-                                        <tr>
-                                            <td>
-                                                <?php if (!empty($item['cover_path'])): ?>
-                                                    <img src="<?php echo h(base_url($item['cover_path'])); ?>" alt="Foto do livro" style="max-width: 60px; max-height: 60px; object-fit: cover; border-radius: 12px;">
-                                                <?php else: ?>
-                                                    <span class="muted">Sem foto</span>
+                                        <td>
+                                            <?php if (!empty($item['cover_path'])): ?>
+                                                <img src="<?php echo h(base_url($item['cover_path'])); ?>" alt="Foto do livro" style="max-width: 60px; max-height: 60px; object-fit: cover; border-radius: 12px;">
+                                            <?php else: ?>
+                                                <span class="muted">Sem foto</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo h($item['title']); ?></td>
+                                        <td><?php echo h($item['author']); ?></td>
+                                        <td><?php echo h($item['shelf']); ?></td>
+                                        <td><?php echo h($item['category']); ?></td>
+                                        <td><?php echo (int)$item['quantity']; ?></td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <a class="icon-btn" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>" title="Editar">✎</a>
+                                                <a class="icon-btn" href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');" title="Excluir">🗑</a>
+                                                <?php if (!empty($item['pdf_path'])): ?>
+                                                    <a class="icon-btn" href="view_book_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener" title="Ver PDF">📄</a>
                                                 <?php endif; ?>
-                                            </td>
-                                            <td><?php echo h($item['title']); ?></td>
-                                            <td><?php echo h($item['author']); ?></td>
-                                            <td><?php echo h($item['shelf'] ?? ''); ?></td>
-                                            <td><?php echo h($item['category']); ?></td>
-                                            <td><?php echo (int)$item['quantity']; ?></td>
-                                            <td>
-                                                <div class="table-actions">
-                                                    <a class="icon-btn" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>" title="Editar">✏️</a>
-                                                    <a class="icon-btn" href="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" onclick="return confirm('Tem certeza que deseja excluir este livro?');" title="Excluir">🗑️</a>
-                                                    <?php if (!empty($item['pdf_path'])): ?>
-                                                        <a class="icon-btn" href="view_book_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener" title="Ver PDF">📄</a>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 <?php endif; ?>
             </section>
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const buttons = document.querySelectorAll('.toggle-btn');
-        const shelfView = document.getElementById('shelf-view');
-        const listView = document.getElementById('list-view');
-
-        if (buttons.length && shelfView && listView) {
-            buttons.forEach((button) => {
-                button.addEventListener('click', function () {
-                    const view = button.dataset.view;
-                    const isShelf = view === 'shelf';
-
-                    buttons.forEach((item) => item.classList.toggle('active', item === button));
-                    shelfView.style.display = isShelf ? 'block' : 'none';
-                    listView.style.display = isShelf ? 'none' : 'block';
-                });
-            });
-        }
-
-        const bookItems = document.querySelectorAll('.book-item');
-
-        bookItems.forEach((bookItem) => {
-            const tooltip = bookItem.querySelector('.book-tooltip');
-            if (!tooltip) {
-                return;
-            }
-
-            const showTooltip = () => {
-                clearTimeout(bookItem.__tooltipHideTimer);
-                bookItem.classList.add('is-hovered');
-            };
-
-            const scheduleHideTooltip = () => {
-                clearTimeout(bookItem.__tooltipHideTimer);
-                bookItem.__tooltipHideTimer = setTimeout(() => {
-                    bookItem.classList.remove('is-hovered');
-                }, 1100);
-            };
-
-            bookItem.addEventListener('mouseenter', showTooltip);
-            bookItem.addEventListener('mouseleave', scheduleHideTooltip);
-            tooltip.addEventListener('mouseenter', showTooltip);
-            tooltip.addEventListener('mouseleave', scheduleHideTooltip);
-        });
-    });
-</script>
 
 <?php require_once __DIR__ . '/includes/footer.php';

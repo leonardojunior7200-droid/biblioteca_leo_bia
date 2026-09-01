@@ -23,6 +23,8 @@ $books = $books->fetchAll();
 
 $user = current_user();
 $userId = (int)$user['id'];
+$turma = $user['turma'] ?? '';
+$turno = $user['turno'] ?? '';
 
 $avatarOptions = [
     ['value' => 'img/avatars/avatar-feminino.svg', 'label' => 'Feminino'],
@@ -49,8 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_photo_form'])
                 throw new Exception('Formato ou tamanho de imagem inválido.');
             }
 
+            $targetDirectory = ensure_upload_directory('uploads/avatars');
             $fileName = 'user-' . $userId . '-' . time() . '.' . $extension;
-            $targetPath = __DIR__ . '/uploads/avatars/' . $fileName;
+            $targetPath = $targetDirectory . '/' . $fileName;
             if (!move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
                 throw new Exception('Não foi possível salvar a imagem.');
             }
@@ -58,8 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_photo_form'])
             $photoPath = 'uploads/avatars/' . $fileName;
         } elseif (isset($_POST['remove_photo'])) {
             $photoPath = null;
-        } elseif (isset($_POST['avatar_choice']) && in_array($_POST['avatar_choice'], array_column($avatarOptions, 'value'), true)) {
-            $photoPath = $_POST['avatar_choice'];
+        } elseif (isset($_POST['avatar_choice'])) {
+            if ($_POST['avatar_choice'] === '' || in_array($_POST['avatar_choice'], array_column($avatarOptions, 'value'), true)) {
+                $photoPath = $_POST['avatar_choice'];
+            }
         }
 
         $stmt = $db->prepare('UPDATE users SET profile_photo = :profile_photo WHERE id = :id');
@@ -68,23 +73,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_photo_form'])
         $user['profile_photo'] = $photoPath;
         $profilePhoto = $photoPath;
         $selectedAvatar = in_array($profilePhoto, array_column($avatarOptions, 'value'), true) ? $profilePhoto : '';
-        $profileMessage = 'Foto de perfil atualizada com sucesso.';
+        $profileMessage = 'Perfil atualizado com sucesso.';
     } catch (Exception $e) {
         $profileMessage = $e->getMessage();
         $profileMessageType = 'error';
     }
 }
 
-$displayPhoto = '';
-if (!empty($profilePhoto)) {
-    $displayPhoto = strpos($profilePhoto, 'http') === 0 ? $profilePhoto : base_url($profilePhoto);
-} else {
-    $displayPhoto = base_url('img/avatars/avatar-biblioteca.svg');
-}
+$displayPhoto = profile_photo_url($profilePhoto);
 
 $history = $db->prepare('SELECT l.id, b.title, l.loaned_at, l.due_date, l.returned_at FROM loans l JOIN books b ON l.book_id = b.id WHERE l.user_id = :user_id ORDER BY l.loaned_at DESC');
 $history->execute([':user_id' => $userId]);
 $history = $history->fetchAll();
+
+$dueSoon = $db->prepare('SELECT l.id, b.title, l.loaned_at, l.due_date FROM loans l JOIN books b ON l.book_id = b.id WHERE l.user_id = :user_id AND l.returned_at IS NULL AND l.due_date >= DATE("now") AND l.due_date <= DATE("now", "+2 days") ORDER BY l.due_date ASC');
+$dueSoon->execute([':user_id' => $userId]);
+$dueSoon = $dueSoon->fetchAll();
 
 $overdue = $db->prepare('SELECT l.id, b.title, l.loaned_at, l.due_date FROM loans l JOIN books b ON l.book_id = b.id WHERE l.user_id = :user_id AND l.returned_at IS NULL AND l.due_date < DATE("now") ORDER BY l.due_date ASC');
 $overdue->execute([':user_id' => $userId]);
@@ -97,11 +101,26 @@ require_once __DIR__ . '/includes/header.php';
     <p>Bem-vindo, <?php echo h($user['name']); ?>. Aqui você pode pesquisar livros e ver seu histórico e pendências.</p>
 </div>
 
+<?php if (!empty($dueSoon)): ?>
+<div class="card">
+    <div class="flash warning">
+        <strong>Atenção!</strong> Você possui <?php echo count($dueSoon); ?> empréstimo(s) vencendo em até 2 dias.
+    </div>
+    <ul class="alert-list">
+        <?php foreach ($dueSoon as $item): ?>
+            <li><strong><?php echo h($item['title']); ?></strong> — vence em <?php echo h(format_date($item['due_date'])); ?></li>
+        <?php endforeach; ?>
+    </ul>
+</div>
+<?php endif; ?>
+
 <div class="card profile-card">
     <div class="profile-summary">
         <img src="<?php echo h($displayPhoto); ?>" alt="Foto de perfil" class="profile-avatar">
         <div>
             <h2>Seu perfil</h2>
+            <p>Turma: <?php echo h($turma !== '' ? $turma : 'Não informada'); ?></p>
+            <p>Turno: <?php echo h($turno !== '' ? $turno : 'Não informado'); ?></p>
             <p>Escolha um avatar padrão ou envie uma foto personalizada para o seu painel.</p>
         </div>
     </div>
@@ -132,7 +151,7 @@ require_once __DIR__ . '/includes/header.php';
             <input type="file" id="profile_photo" name="profile_photo" accept="image/*">
         </div>
         <div class="actions">
-            <input type="submit" value="Salvar foto">
+            <input type="submit" value="Salvar perfil">
             <button type="submit" name="remove_photo" value="1">Remover foto</button>
         </div>
     </form>
@@ -190,7 +209,10 @@ require_once __DIR__ . '/includes/header.php';
 </div>
 
 <div class="card">
-    <h2>Histórico de empréstimos</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Histórico de empréstimos e Autorizações</h2>
+        <span class="muted" style="font-size: 0.85rem;">📄 Baixe a autorização em PDF para assinatura dos responsáveis</span>
+    </div>
     <?php if (empty($history)): ?>
         <p>Você ainda não possui histórico de empréstimos.</p>
     <?php else: ?>
@@ -201,22 +223,33 @@ require_once __DIR__ . '/includes/header.php';
                     <th>Emprestado</th>
                     <th>Devolução</th>
                     <th>Status</th>
+                    <th>Termo dos Pais</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($history as $item): ?>
                     <tr>
-                        <td><?php echo h($item['title']); ?></td>
+                        <td><strong><?php echo h($item['title']); ?></strong></td>
                         <td><?php echo h(format_date($item['loaned_at'])); ?></td>
                         <td><?php echo h(format_date($item['due_date'])); ?></td>
                         <td>
                             <?php if ($item['returned_at']): ?>
-                                Devolvido em <?php echo h(format_date($item['returned_at'])); ?>
-                            <?php elseif (strtotime($item['due_date']) < time()): ?>
-                                Atrasado
+                                <span class="status-pill status-returned">Devolvido</span>
                             <?php else: ?>
-                                Ativo
+                                <?php $today = strtotime(date('Y-m-d')); $dueTimestamp = strtotime($item['due_date']); ?>
+                                <?php if ($dueTimestamp < $today): ?>
+                                    <span class="status-pill status-overdue">Atrasado</span>
+                                <?php elseif ($dueTimestamp <= strtotime('+2 days', $today)): ?>
+                                    <span class="status-pill status-warning">Vence em até 2 dias</span>
+                                <?php else: ?>
+                                    <span class="status-pill status-active">Ativo</span>
+                                <?php endif; ?>
                             <?php endif; ?>
+                        </td>
+                        <td>
+                            <a href="loan_authorization_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+                                📄 Baixar Termo PDF
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

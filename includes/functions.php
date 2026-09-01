@@ -20,6 +20,41 @@ function redirect(string $path): void
     exit;
 }
 
+function ensure_upload_directory(string $relativePath): string
+{
+    $directory = __DIR__ . '/../' . ltrim($relativePath, '/');
+    if (!is_dir($directory) && !mkdir($directory, 0755, true) && !is_dir($directory)) {
+        throw new Exception('Não foi possível criar a pasta de uploads.');
+    }
+
+    return $directory;
+}
+
+function get_backup_directory(): string
+{
+    return ensure_upload_directory('backups');
+}
+
+function profile_photo_url(?string $photoPath): string
+{
+    if (empty($photoPath)) {
+        return base_url('img/avatars/avatar-biblioteca.svg');
+    }
+
+    if (strpos($photoPath, 'http') === 0) {
+        return $photoPath;
+    }
+
+    $normalizedPath = ltrim($photoPath, '/');
+    $absolutePath = __DIR__ . '/../' . $normalizedPath;
+
+    if (preg_match('#^(img/|uploads/)#', $normalizedPath) && file_exists($absolutePath)) {
+        return base_url($normalizedPath);
+    }
+
+    return base_url('img/avatars/avatar-biblioteca.svg');
+}
+
 function set_flash(string $message, string $type = 'success'): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -43,6 +78,7 @@ function get_flash(): ?array
 
     return null;
 }
+
 
 function h(string $value): string
 {

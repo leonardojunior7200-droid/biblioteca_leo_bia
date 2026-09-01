@@ -5,7 +5,12 @@ require_once __DIR__ . '/includes/functions.php';
 try {
     $db = get_db();
     ensure_user_profile_photo_column();
+    ensure_user_turma_column();
+    ensure_user_turno_column();
     ensure_book_pdf_column();
+    ensure_book_barcode_column();
+    ensure_book_shelf_column();
+    ensure_parent_columns();
 
     $db->exec('CREATE TABLE IF NOT EXISTS roles (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,6 +23,12 @@ try {
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         role_id INTEGER NOT NULL,
+        turma TEXT,
+        turno TEXT,
+        parent_name TEXT,
+        parent_phone TEXT,
+        parent_email TEXT,
+        parent_document TEXT,
         blocked INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(role_id) REFERENCES roles(id)
@@ -42,6 +53,8 @@ try {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         book_id INTEGER NOT NULL,
+        parent_name TEXT,
+        parent_signature_status TEXT DEFAULT "pendente",
         loaned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         due_date TEXT NOT NULL,
         returned_at TEXT,

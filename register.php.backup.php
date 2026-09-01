@@ -10,9 +10,6 @@ $name = '';
 $email = '';
 $turma = '';
 $turno = '';
-$parentName = '';
-$parentPhone = '';
-$parentEmail = '';
 $error = null;
 
 $turmas = [
@@ -42,9 +39,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $turma = trim($_POST['turma'] ?? '');
     $turno = trim($_POST['turno'] ?? '');
-    $parentName = trim($_POST['parent_name'] ?? '');
-    $parentPhone = trim($_POST['parent_phone'] ?? '');
-    $parentEmail = trim($_POST['parent_email'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $confirmPassword = trim($_POST['confirm_password'] ?? '');
 
@@ -76,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$role) {
                     $error = 'Não foi possível encontrar o papel de aluno.';
                 } else {
-                    $insertStmt = $db->prepare('INSERT INTO users (name, email, password, role_id, turma, turno, parent_name, parent_phone, parent_email, blocked) VALUES (:name, :email, :password, :role_id, :turma, :turno, :parent_name, :parent_phone, :parent_email, 0)');
+                    $insertStmt = $db->prepare('INSERT INTO users (name, email, password, role_id, turma, turno, blocked) VALUES (:name, :email, :password, :role_id, :turma, :turno, 0)');
                     $insertStmt->execute([
                         ':name' => $name,
                         ':email' => $email,
@@ -84,9 +78,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':role_id' => (int)$role['id'],
                         ':turma' => $turma,
                         ':turno' => $turno,
-                        ':parent_name' => $parentName !== '' ? $parentName : null,
-                        ':parent_phone' => $parentPhone !== '' ? $parentPhone : null,
-                        ':parent_email' => $parentEmail !== '' ? $parentEmail : null,
                     ]);
 
                     $userId = (int)$db->lastInsertId();
@@ -127,9 +118,9 @@ require_once __DIR__ . '/includes/header.php';
                 <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
                 <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
                 <a class="nav-item active" href="register.php"><span class="nav-icon">◌</span><span>Usuários</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
             </nav>
         </div>
+        <a class="sidebar-logout" href="logout.php"><span>↩</span><span>Sair</span></a>
     </aside>
 
     <div class="dashboard-main-panel">
@@ -151,7 +142,7 @@ require_once __DIR__ . '/includes/header.php';
             </div>
             <?php if ($error): ?>
                 <div class="flash error"><?php echo h($error); ?></div>
-            <?php endif; ?>
+            <?endif; ?>
             <form method="post" action="<?php echo h(base_url('register.php')); ?>" class="loan-form">
                 <div class="field-group">
                     <label for="name">Nome</label>
@@ -176,20 +167,8 @@ require_once __DIR__ . '/includes/header.php';
                     </select>
                 </div>
                 <div class="field-group">
-                    <label for="email">Email do Aluno</label>
+                    <label for="email">Email</label>
                     <input type="email" id="email" name="email" value="<?php echo h($email); ?>" required>
-                </div>
-                <div class="field-group">
-                    <label for="parent_name">Nome do Responsável (Pai / Mãe / Tutor)</label>
-                    <input type="text" id="parent_name" name="parent_name" value="<?php echo h($parentName); ?>" placeholder="Ex: Maria dos Santos">
-                </div>
-                <div class="field-group">
-                    <label for="parent_phone">Telefone / WhatsApp do Responsável</label>
-                    <input type="tel" id="parent_phone" name="parent_phone" value="<?php echo h($parentPhone); ?>" placeholder="(00) 00000-0000">
-                </div>
-                <div class="field-group">
-                    <label for="parent_email">Email do Responsável</label>
-                    <input type="email" id="parent_email" name="parent_email" value="<?php echo h($parentEmail); ?>" placeholder="responsavel@email.com">
                 </div>
                 <div class="field-group">
                     <label for="password">Senha</label>
@@ -206,3 +185,4 @@ require_once __DIR__ . '/includes/header.php';
     </div>
 </div>
 <?php require_once __DIR__ . '/includes/footer.php';
+?>

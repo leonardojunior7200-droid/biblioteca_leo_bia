@@ -1,0 +1,124 @@
+/* Background Gallery Styles - Biblioteca Escolar */
+/* Matches existing interface design language */
+
+.background-gallery {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 18, 34, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+}
+
+.background-gallery.hidden {
+    display: none;
+}
+
+.background-gallery-inner {
+    width: min(960px, 100%);
+    max-height: 80vh;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 20px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+    padding: 20px;
+}
+
+html.theme-dark .background-gallery-inner,
+body.theme-dark .background-gallery-inner {
+    background: rgba(18, 22, 34, 0.98);
+}
+
+.background-gallery-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.background-gallery-header h2 {
+    margin: 0;
+    color: #0f2745;
+    font-family: var(--font-heading);
+    font-size: 1.3rem;
+}
+
+html.theme-dark .background-gallery-header h2 {
+    color: #f8fafc;
+}
+
+#background-gallery-close {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+#background-gallery-close:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+html.theme-dark #background-gallery-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.background-gallery-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 8px;
+}
+
+.background-gallery-card {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.background-gallery-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.background-gallery-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.background-gallery-card span {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    padding: 10px;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    font-weight: 600;
+    font-size: 0.85rem;
+    background: linear-gradient(transparent 60%, rgba(0, 0, 0, 0.7));
+}
+
+.background-gallery-empty {
+    color: var(--footer-text);
+    text-align: center;
+    padding: 40px 20px;
+    margin-top: 20px;
+}
+
+html.theme-dark .background-gallery-empty {
+    color: #a5b4fc;
+}
