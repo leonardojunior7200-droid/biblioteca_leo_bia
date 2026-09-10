@@ -14,9 +14,37 @@ ensure_user_profile_photo_column();
 ensure_book_pdf_column();
 ensure_book_shelf_column();
 
+$user = current_user();
+$userId = (int)$user['id'];
 $search = trim($_GET['search'] ?? '');
 $section = $_GET['section'] ?? 'inicio';
 $allowedSections = ['inicio', 'livros', 'emprestimos', 'perfil'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['renewal_request'])) {
+    if (!verify_csrf_token((string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(419);
+        exit('Sessão expirada ou token inválido.');
+    }
+    $loanId = require_positive_int($_POST['loan_id'] ?? null);
+    if (!$loanId) {
+        set_flash('Empréstimo inválido.', 'error');
+        redirect('student_dashboard.php?section=emprestimos');
+    }
+    $loanStmt = $db->prepare('SELECT l.id FROM loans l WHERE l.id = :loan_id AND l.user_id = :user_id AND l.returned_at IS NULL');
+    $loanStmt->execute([':loan_id' => $loanId, ':user_id' => $userId]);
+    $loan = $loanStmt->fetch();
+    $pendingStmt = $db->prepare('SELECT id FROM loan_renewal_requests WHERE loan_id = :loan_id AND status = "pending"');
+    $pendingStmt->execute([':loan_id' => $loanId]);
+    if (!$loan) {
+        set_flash('Empréstimo não encontrado ou já devolvido.', 'error');
+    } elseif ($pendingStmt->fetch()) {
+        set_flash('Já existe uma solicitação pendente para este empréstimo.', 'error');
+    } else {
+        $insert = $db->prepare('INSERT INTO loan_renewal_requests (loan_id, user_id) VALUES (:loan_id, :user_id)');
+        $insert->execute([':loan_id' => $loanId, ':user_id' => $userId]);
+        set_flash('Solicitação enviada. Aguarde a confirmação da biblioteca.');
+    }
+    redirect('student_dashboard.php?section=emprestimos');
+}
 if (!in_array($section, $allowedSections, true)) {
     $section = 'inicio';
 }
@@ -32,8 +60,6 @@ $books = $db->prepare('SELECT id, title, author, category, quantity, shelf, cove
 $books->execute($params);
 $books = $books->fetchAll();
 
-$user = current_user();
-$userId = (int)$user['id'];
 $matricula = $user['matricula'] ?? '';
 $turma = $user['turma'] ?? '';
 $turno = $user['turno'] ?? '';
@@ -79,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_photo_form'])
 
 $displayPhoto = profile_photo_url($profilePhoto);
 
-$history = $db->prepare('SELECT l.id, b.title, l.loaned_at, l.due_date, l.returned_at FROM loans l JOIN books b ON l.book_id = b.id WHERE l.user_id = :user_id ORDER BY l.loaned_at DESC');
+$history = $db->prepare('SELECT l.id, b.title, l.loaned_at, l.due_date, l.returned_at, rr.status AS renewal_status, rr.admin_note AS renewal_note, rr.new_due_date FROM loans l JOIN books b ON l.book_id = b.id LEFT JOIN loan_renewal_requests rr ON rr.id = (SELECT MAX(rr2.id) FROM loan_renewal_requests rr2 WHERE rr2.loan_id = l.id) WHERE l.user_id = :user_id ORDER BY l.loaned_at DESC');
 $history->execute([':user_id' => $userId]);
 $history = $history->fetchAll();
 
@@ -107,7 +133,6 @@ require_once __DIR__ . '/includes/header.php';
                 <a class="nav-item <?php echo $section === 'inicio' ? 'active' : ''; ?>" href="student_dashboard.php?section=inicio"><span class="nav-icon">◉</span><span>Início</span></a>
                 <a class="nav-item <?php echo $section === 'livros' ? 'active' : ''; ?>" href="student_dashboard.php?section=livros"><span class="nav-icon">◌</span><span>Livros</span></a>
                 <a class="nav-item <?php echo $section === 'emprestimos' ? 'active' : ''; ?>" href="student_dashboard.php?section=emprestimos"><span class="nav-icon">◌</span><span>Meus empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Minhas reservas</span></a>
                 <a class="nav-item <?php echo $section === 'perfil' ? 'active' : ''; ?>" href="student_dashboard.php?section=perfil"><span class="nav-icon">◌</span><span>Meu perfil</span></a>
                 <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
             </nav>
@@ -118,7 +143,7 @@ require_once __DIR__ . '/includes/header.php';
             <div>
                 <p class="eyebrow">Área do aluno</p>
                 <h1>Olá, <?php echo h($user['name']); ?></h1>
-                <p class="topbar-subtitle">Acompanhe seus livros, empréstimos e reservas.</p>
+                <p class="topbar-subtitle">Acompanhe seus livros e solicite renovação de empréstimos.</p>
             </div>
             <div class="topbar-user">
                 <img src="<?php echo h($displayPhoto); ?>" alt="Avatar do aluno">
@@ -136,7 +161,6 @@ require_once __DIR__ . '/includes/header.php';
     <div class="student-quick-actions">
         <a class="primary-btn" href="student_dashboard.php?section=livros">Explorar livros</a>
         <a class="secondary-btn" href="student_dashboard.php?section=emprestimos">Ver meus empréstimos</a>
-        <a class="secondary-btn" href="reservations.php">Minhas reservas</a>
     </div>
 </section>
 <section class="stats-grid student-stats-grid" aria-label="Resumo do aluno">
@@ -159,7 +183,7 @@ require_once __DIR__ . '/includes/header.php';
     </div>
     <div class="shortcut-grid">
         <a class="shortcut-card" href="student_dashboard.php?section=livros"><span class="shortcut-icon">📖</span><strong>Pesquisar livros</strong><p>Explore o catálogo e encontre uma nova história.</p></a>
-        <a class="shortcut-card" href="reservations.php"><span class="shortcut-icon">✦</span><strong>Reservar um livro</strong><p>Garanta seu lugar na fila de leitura.</p></a>
+        <a class="shortcut-card" href="student_dashboard.php?section=emprestimos"><span class="shortcut-icon">↻</span><strong>Renovar empréstimo</strong><p>Envie uma solicitação para aprovação da biblioteca.</p></a>
         <a class="shortcut-card" href="student_dashboard.php?section=perfil"><span class="shortcut-icon">◉</span><strong>Atualizar perfil</strong><p>Escolha um avatar e confira seus dados.</p></a>
     </div>
 </div>
@@ -359,6 +383,7 @@ require_once __DIR__ . '/includes/header.php';
                     <th>Emprestado</th>
                     <th>Devolução</th>
                     <th>Status</th>
+                    <th>Renovação</th>
                     <th>Termo dos Pais</th>
                 </tr>
             </thead>
@@ -380,6 +405,23 @@ require_once __DIR__ . '/includes/header.php';
                                 <?php else: ?>
                                     <span class="status-pill status-active">Ativo</span>
                                 <?php endif; ?>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (!$item['returned_at'] && ($item['renewal_status'] ?? '') !== 'pending' && ($item['renewal_status'] ?? '') !== 'approved'): ?>
+                                <form method="post" style="margin-bottom: 0.4rem;">
+                                    <input type="hidden" name="renewal_request" value="1">
+                                    <input type="hidden" name="loan_id" value="<?php echo (int)$item['id']; ?>">
+                                    <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+                                    <button type="submit">Solicitar renovação</button>
+                                </form>
+                            <?php elseif (($item['renewal_status'] ?? '') === 'pending'): ?>
+                                <span class="status-pill status-warning">Pendente</span>
+                            <?php elseif (($item['renewal_status'] ?? '') === 'approved'): ?>
+                                <span class="status-pill status-active">Aprovada</span>
+                            <?php elseif (($item['renewal_status'] ?? '') === 'rejected'): ?>
+                                <span class="status-pill status-overdue">Recusada</span>
+                                <?php if (!empty($item['renewal_note'])): ?><br><small><?php echo h($item['renewal_note']); ?></small><?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td>

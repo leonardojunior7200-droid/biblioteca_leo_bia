@@ -43,7 +43,6 @@ try {
                     <a class="nav-item" href="student_dashboard.php"><span class="nav-icon">◉</span><span>Início</span></a>
                     <a class="nav-item active" href="index.php"><span class="nav-icon">◌</span><span>Livros</span></a>
                     <a class="nav-item" href="student_dashboard.php?section=emprestimos"><span class="nav-icon">◌</span><span>Meus empréstimos</span></a>
-                    <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Minhas reservas</span></a>
                     <a class="nav-item" href="student_dashboard.php?section=perfil"><span class="nav-icon">◌</span><span>Meu perfil</span></a>
                 <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
             </nav>
@@ -86,7 +85,7 @@ try {
                     <h3><?php echo (int)$availableBooks; ?></h3>
                     <p class="stat-meta">Com estoque ativo</p>
                 </div>
-                <a href="reservations.php">Reservar</a>
+                <a href="student_dashboard.php?section=emprestimos">Renovar empréstimo</a>
             </article>
             <article class="stat-card stat-reservations">
                 <div class="stat-icon">🗂️</div>

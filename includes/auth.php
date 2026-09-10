@@ -18,6 +18,8 @@ ensure_user_turno_column();
 ensure_user_matricula_column();
 ensure_user_profile_completed_column();
 ensure_parent_columns();
+ensure_renewal_requests_table();
+ensure_password_resets_table();
 
 function login_user(int $userId): void
 {

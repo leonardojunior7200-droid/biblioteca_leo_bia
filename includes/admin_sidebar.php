@@ -6,6 +6,7 @@ $sidebarLinks = [
     ['key' => 'dashboard.php', 'label' => 'Dashboard', 'href' => 'dashboard.php'],
     ['key' => 'index.php', 'label' => 'Catálogo', 'href' => 'index.php'],
     ['key' => 'loans.php', 'label' => 'Empréstimos', 'href' => 'loans.php'],
+    ['key' => 'renewal_requests.php', 'label' => 'Renovações', 'href' => 'renewal_requests.php'],
     ['key' => 'reservations.php', 'label' => 'Reservas', 'href' => 'reservations.php'],
     ['key' => 'reports.php', 'label' => 'Relatórios', 'href' => 'reports.php'],
     ['key' => 'books.php', 'label' => 'Livros', 'href' => 'books.php'],

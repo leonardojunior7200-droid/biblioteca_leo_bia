@@ -19,8 +19,8 @@ Permitir que a equipe da biblioteca administre o acervo e os empréstimos, enqua
 |---|---|
 | Administrador | Acesso administrativo ao catálogo, empréstimos, reservas, relatórios e dados gerais. |
 | Bibliotecário | Gestão de livros, empréstimos, devoluções, reservas e relatórios. |
-| Aluno | Consulta de catálogo, perfil, histórico de empréstimos e reservas próprias. |
-| Visitante | Consulta autenticada e reserva de livros, conforme as regras de acesso da aplicação. |
+| Aluno | Consulta de catálogo, perfil, histórico de empréstimos e solicitação de renovação. |
+| Visitante | Consulta autenticada do catálogo, conforme as regras de acesso da aplicação. |
 
 ## Funcionalidades Implementadas
 ### Autenticação e acesso
@@ -47,9 +47,9 @@ Permitir que a equipe da biblioteca administre o acervo e os empréstimos, enqua
 - Devolução com reposição automática do estoque.
 - Bloqueio do usuário quando devolve um empréstimo após o vencimento.### Reservas
 - Usuário autenticado pode registrar reserva de um livro.
-- Administrador e bibliotecário podem visualizar todas as reservas.
-- Alunos e visitantes veem somente as próprias reservas.
-- Administrador e bibliotecário podem marcar reservas como cumpridas quando há estoque disponível.
+- Reservas existentes ficam disponíveis somente para administração e bibliotecário.
+- Alunos não acessam mais a área de reservas.
+- Alunos podem solicitar renovação de empréstimos ativos, sujeita à aprovação administrativa.
 
 ### Painéis e relatórios
 - Dashboard administrativo com indicadores do acervo e visão de leitura.
@@ -75,7 +75,7 @@ Permitir que a equipe da biblioteca administre o acervo e os empréstimos, enqua
 | RF07 | Registrar devoluções e recompor estoque. | Implementado |
 | RF08 | Bloquear novo empréstimo para usuário bloqueado. | Implementado |
 | RF09 | Limitar empréstimos simultâneos por usuário. | Implementado |
-| RF10 | Registrar e consultar reservas. | Implementado parcialmente |
+| RF10 | Administrar reservas legadas. | Implementado parcialmente |
 | RF11 | Exibir relatórios de empréstimos, atrasos e estoque. | Implementado |
 | RF12 | Gerenciar usuários por administrador. | Pendente |
 
@@ -110,6 +110,8 @@ users (1) ---< reservations >--- (1) books
 | Caso de uso | Ator | Fluxo resumido |
 |---|---|---|
 | Realizar login | Todos os usuários | Informa e-mail e senha; o sistema valida a senha e inicia a sessão. |
+| Solicitar renovação | Aluno | Seleciona empréstimo ativo; o sistema registra a solicitação como pendente. |
+| Aprovar renovação | Administrador/Bibliotecário | Analisa a solicitação e aprova ou recusa com justificativa. |
 | Cadastrar aluno | Visitante/Aluno | Preenche nome, e-mail, senha, turma e turno; o sistema cria uma conta de aluno. |
 | Gerenciar livros | Administrador/Bibliotecário | Cadastra, busca, edita ou exclui itens do acervo. |
 | Registrar empréstimo | Administrador/Bibliotecário | Seleciona usuário e livro; o sistema valida bloqueio, estoque e limite antes de registrar. |

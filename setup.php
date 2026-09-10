@@ -81,6 +81,7 @@ try {
         FOREIGN KEY(user_id) REFERENCES users(id),
         FOREIGN KEY(book_id) REFERENCES books(id)
     )');
+    ensure_renewal_requests_table();
 
     $roles = ['Administrador', 'Bibliotecário', 'Aluno', 'Visitante'];
     $stmt = $db->prepare('INSERT OR IGNORE INTO roles (name) VALUES (:name)');

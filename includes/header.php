@@ -24,7 +24,7 @@ if ($user) {
 </head>
 <?php
 $pageName = basename($_SERVER['PHP_SELF'] ?? 'index.php');
-$dashboardPages = ['index.php', 'dashboard.php', 'student_dashboard.php', 'books.php', 'loans.php', 'reservations.php', 'reports.php', 'register.php', 'users.php', 'backup.php'];
+$dashboardPages = ['index.php', 'dashboard.php', 'student_dashboard.php', 'books.php', 'loans.php', 'reservations.php', 'renewal_requests.php', 'reports.php', 'users.php', 'backup.php'];
 $bodyClass = in_array($pageName, $dashboardPages, true) ? 'dashboard-page' : '';
 if ($pageName === 'login.php') {
     $bodyClass = 'login-landing-page';
@@ -39,7 +39,6 @@ if ($pageName === 'login.php') {
             <a href="<?php echo h(base_url('logout.php')); ?>" class="nav-logout">Sair</a>
         <?php else: ?>
             <a href="<?php echo h(base_url('login.php')); ?>">Login</a>
-            <a href="<?php echo h(base_url('register.php')); ?>">Cadastro</a>
         <?php endif; ?>
         <?php if ($pageName !== 'login.php'): ?>
             <button id="theme-toggle" type="button">Tema escuro</button>
@@ -65,7 +64,8 @@ if ($pageName === 'login.php') {
                 <a href="<?php echo h(base_url('reports.php')); ?>">Relatórios</a>
                 <a href="<?php echo h(base_url('backup.php')); ?>">Backups</a>
             <?php endif; ?>
-            <a href="<?php echo h(base_url('reservations.php')); ?>">Reservas</a>
+            <?php if (user_has_role(['Administrador', 'Bibliotecário'])): ?><a href="<?php echo h(base_url('renewal_requests.php')); ?>">Renovações</a><?php endif; ?>
+            <?php if (user_has_role(['Administrador', 'Bibliotecário'])): ?><a href="<?php echo h(base_url('reservations.php')); ?>">Reservas</a><?php endif; ?>
             <div class="nav-user">
                 <img src="<?php echo h($headerPhoto); ?>" alt="Foto de perfil" class="nav-user-avatar">
                 <span>Olá, <?php echo h($user['name']); ?> (<?php echo h($user['role_name']); ?>)</span>

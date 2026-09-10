@@ -1,6 +1,6 @@
-<?php 
-require_once __DIR__ . '/includes/auth.php'; 
-require_once __DIR__ . '/includes/functions.php'; 
+<?php
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/functions.php';
 
 if (is_logged_in()) {
     $current = current_user();
@@ -8,19 +8,19 @@ if (is_logged_in()) {
     redirect($redirectPage);
 }
 
-$email = ''; 
-$matricula = ''; 
-$error = null; 
+$email = '';
+$matricula = '';
+$error = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') { 
-    $email = trim((string)($_POST['email'] ?? '')); 
-    $matricula = trim((string)($_POST['matricula'] ?? '')); 
-    $password = trim((string)($_POST['password'] ?? '')); 
-    
-    if (($email === '' && $matricula === '') || $password === '') { 
-        $error = 'Informe a matrícula do aluno ou o e-mail do administrador e a senha.'; 
-    } else { 
-        $db = get_db(); 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = trim((string)($_POST['email'] ?? ''));
+    $matricula = trim((string)($_POST['matricula'] ?? ''));
+    $password = trim((string)($_POST['password'] ?? ''));
+
+    if (($email === '' && $matricula === '') || $password === '') {
+        $error = 'Informe a matrícula do aluno ou o e-mail do administrador e a senha.';
+    } else {
+        $db = get_db();
         $user = null;
 
         if ($email !== '') {
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $matriculaStmt->execute([':matricula' => $matricula]);
             $user = $matriculaStmt->fetch();
         }
-        
+
         if ($user && password_verify($password, $user['password'])) {
             if (!empty($user['blocked'])) {
                 $error = 'Esta conta está bloqueada pelo administrador.';
@@ -52,10 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $error = 'Matrícula, e-mail do administrador ou senha inválidos.';
         }
-    } 
-} 
+    }
+}
 
-require_once __DIR__ . '/includes/header.php'; 
+require_once __DIR__ . '/includes/header.php';
 ?>
 
 <!-- Biblioteca de Ícones Obrigatória -->
@@ -235,7 +235,7 @@ require_once __DIR__ . '/includes/header.php';
     .submit-button {
         width: 100%;
         padding: 14px;
-        background-color: #cc9333; 
+        background-color: #cc9333;
         border: none;
         border-radius: 6px;
         color: #ffffff;
@@ -290,7 +290,7 @@ require_once __DIR__ . '/includes/header.php';
 
 <div class="login-page-container">
     <div class="login-card">
-        
+
         <!-- Esquerda: Identidade Visual -->
         <div class="brand-section">
             <div class="brand-icon"><i class="fa-solid fa-book-open"></i></div>
@@ -305,55 +305,51 @@ require_once __DIR__ . '/includes/header.php';
             <h1>Login</h1>
             <div class="form-desc">Acesse sua conta para continuar</div>
 
-            <?php if ($error): ?> 
-                <div class="flash error"><?php echo h($error); ?></div> 
-            <?php endif; ?> 
+            <?php if ($error): ?>
+                <div class="flash error"><?php echo h($error); ?></div>
+            <?php endif; ?>
 
-            <form method="post" action="<?php echo h(base_url('login.php')); ?>"> 
-                <div class="input-block"> 
-                    <label for="email">E-mail do administrador</label> 
+            <form method="post" action="<?php echo h(base_url('login.php')); ?>">
+                <div class="input-block">
+                    <label for="email">E-mail do administrador</label>
                     <div class="field-container">
                         <i class="fa-regular fa-user input-icon"></i>
-                        <input type="email" id="email" name="email" value="<?php echo h($email); ?>" placeholder="Somente administradores"> 
+                        <input type="email" id="email" name="email" value="<?php echo h($email); ?>" placeholder="Somente administradores">
                     </div>
                 </div>
 
-                <div class="input-block"> 
-                    <label for="matricula">Matrícula do aluno</label> 
+                <div class="input-block">
+                    <label for="matricula">Matrícula do aluno</label>
                     <div class="field-container">
                         <i class="fa-solid fa-id-card input-icon"></i>
-                        <input type="text" id="matricula" name="matricula" value="<?php echo h($matricula); ?>" placeholder="Digite sua matrícula"> 
+                        <input type="text" id="matricula" name="matricula" value="<?php echo h($matricula); ?>" placeholder="Digite sua matrícula">
                     </div>
-                </div> 
+                </div>
 
-                <div class="input-block"> 
-                    <label for="password">Senha</label> 
+                <div class="input-block">
+                    <label for="password">Senha</label>
                     <div class="field-container">
                         <i class="fa-solid fa-lock input-icon"></i>
-                        <input type="password" id="password" name="password" placeholder="Digite sua senha" required> 
+                        <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
                         <i class="fa-regular fa-eye hide-show-password" id="btnTogglePass"></i>
                     </div>
-                </div> 
+                </div>
 
                 <div class="extra-options">
                     <label class="remember-box">
                         <input type="checkbox" name="remember"> Lembrar-me
                     </label>
-                    <a href="#" class="forgot-link">Esqueceu sua senha?</a>
+                    <a href="<?php echo h(base_url('forgot_password.php')); ?>" class="forgot-link">Esqueceu sua senha?</a>
                 </div>
 
                 <button type="submit" class="submit-button">
                     <i class="fa-solid fa-right-to-bracket"></i> ENTRAR
-                </button> 
-            </form> 
+                </button>
+            </form>
 
-            <div class="or-separator">ou</div>
 
-            <a href="<?php echo h(base_url('register.php')); ?>" class="alt-action-link">
-                <i class="fa-regular fa-user" style="margin-right: 5px;"></i> Ainda não tenho conta. Cadastrar-se
-            </a>
-        </div> 
-        
+        </div>
+
     </div>
 </div>
 
@@ -369,6 +365,6 @@ require_once __DIR__ . '/includes/header.php';
     });
 </script>
 
-<?php 
-require_once __DIR__ . '/includes/footer.php'; 
+<?php
+require_once __DIR__ . '/includes/footer.php';
 ?>

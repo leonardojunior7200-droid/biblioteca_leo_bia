@@ -214,6 +214,30 @@ function ensure_book_shelf_column(): void
     }
 }
 
+function ensure_renewal_requests_table(): void
+{
+    $db = get_db();
+    try {
+        $db->exec('CREATE TABLE IF NOT EXISTS loan_renewal_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            loan_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            status TEXT NOT NULL DEFAULT "pending",
+            requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TEXT,
+            reviewed_by INTEGER,
+            new_due_date TEXT,
+            admin_note TEXT,
+            FOREIGN KEY(loan_id) REFERENCES loans(id),
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(reviewed_by) REFERENCES users(id)
+        )');
+        $db->exec('CREATE INDEX IF NOT EXISTS idx_renewal_requests_status ON loan_renewal_requests (status)');
+    } catch (Exception $e) {
+        // A instalação inicial ainda pode não ter criado a tabela de empréstimos.
+    }
+}
+
 function ensure_parent_columns(): void
 {
     $db = get_db();
@@ -254,4 +278,20 @@ function ensure_parent_columns(): void
     } catch (Exception $e) {
         // Ignora caso tabela não exista ainda
     }
+}
+
+
+function ensure_password_resets_table(): void
+{
+    $db = get_db();
+    $db->exec('CREATE TABLE IF NOT EXISTS password_resets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_password_resets_expires ON password_resets (expires_at)');
 }

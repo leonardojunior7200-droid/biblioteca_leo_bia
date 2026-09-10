@@ -2553,3 +2553,123 @@ header nav a.btn-sair,
     font-size: 11px;
   }
 }
+
+
+/* Telas de recuperação e redefinição de senha */
+.auth-card {
+    width: min(560px, calc(100% - 32px));
+    margin: 56px auto 72px;
+    padding: 38px 42px;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 18px;
+    box-shadow: 0 20px 55px rgba(2, 8, 23, 0.28);
+    box-sizing: border-box;
+}
+
+.auth-card h1 {
+    margin-bottom: 10px;
+    color: #12345b;
+    font-size: clamp(1.7rem, 4vw, 2.25rem);
+    text-shadow: none;
+}
+
+.auth-card > p:first-of-type {
+    margin: 0 0 26px;
+    color: #64748b;
+    font-size: 0.98rem;
+}
+
+.auth-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.auth-card label {
+    margin-top: 4px;
+    color: #24415f;
+    font-size: 0.92rem;
+    font-weight: 700;
+}
+
+.auth-card input[type="email"],
+.auth-card input[type="password"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #172033;
+    font: inherit;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.auth-card input[type="email"]:focus,
+.auth-card input[type="password"]:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.auth-card .btn,
+.auth-card button[type="submit"] {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.auth-card > p:last-child {
+    margin: 24px 0 0;
+    text-align: center;
+}
+
+.auth-card > p:last-child a {
+    color: #168bd1;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-card > p:last-child a:hover {
+    text-decoration: underline;
+}
+
+html.theme-dark .auth-card,
+body.theme-dark .auth-card {
+    background: rgba(24, 32, 48, 0.97);
+    border-color: rgba(148, 163, 184, 0.22);
+}
+
+html.theme-dark .auth-card h1,
+body.theme-dark .auth-card h1,
+html.theme-dark .auth-card label,
+body.theme-dark .auth-card label {
+    color: #f8fafc;
+}
+
+html.theme-dark .auth-card > p:first-of-type,
+body.theme-dark .auth-card > p:first-of-type {
+    color: #cbd5e1;
+}
+
+html.theme-dark .auth-card input[type="email"],
+body.theme-dark .auth-card input[type="email"],
+html.theme-dark .auth-card input[type="password"],
+body.theme-dark .auth-card input[type="password"] {
+    background: #0f1b2e;
+    border-color: #475569;
+    color: #f8fafc;
+}
+
+@media (max-width: 640px) {
+    .auth-card {
+        width: calc(100% - 24px);
+        margin: 28px auto 44px;
+        padding: 28px 20px;
+    }
+}
