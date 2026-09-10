@@ -1,0 +1,14 @@
+Options -Indexes
+
+<FilesMatch "^(?:\.env|.*\.(?:db|sqlite|sqlite3|bak|backup|sql|log))$">
+    Require all denied
+</FilesMatch>
+
+RewriteEngine On
+RewriteRule ^(?:data|backups)(?:/|$) - [F,L]
+
+Options -Indexes -ExecCGI
+
+Header always set X-Content-Type-Options "nosniff"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set X-Frame-Options "SAMEORIGIN"

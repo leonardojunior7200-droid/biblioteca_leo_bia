@@ -60,9 +60,17 @@ class BackgroundFeaturesManager {
         // Load background
         const savedBackground = localStorage.getItem('background');
         const savedBackgroundImage = localStorage.getItem('backgroundImage');
-        const backgroundOptions = ['default', 'light', 'dark', 'blue', 'custom'];
+        const isStudent = this.elements.body.classList.contains('student-dashboard-page');
+        const backgroundOptions = isStudent
+            ? ['default', 'light', 'dark', 'blue']
+            : ['default', 'light', 'dark', 'blue', 'custom'];
         
-        if (savedBackground === 'custom' && savedBackgroundImage) {
+        if (isStudent && savedBackground === 'custom') {
+            localStorage.removeItem('background');
+            localStorage.removeItem('backgroundImage');
+            this.applyBackground('default');
+            this.state.activeBackground = 'default';
+        } else if (savedBackground === 'custom' && savedBackgroundImage && !isStudent) {
             this.applyBackground('custom', savedBackgroundImage);
             this.state.activeBackground = 'custom';
         } else if (backgroundOptions.includes(savedBackground)) {
@@ -159,7 +167,9 @@ class BackgroundFeaturesManager {
     }
 
     cycleBackground() {
-        const backgroundOptions = ['default', 'light', 'dark', 'blue', 'custom'];
+        const backgroundOptions = this.elements.body.classList.contains('student-dashboard-page')
+            ? ['default', 'light', 'dark', 'blue']
+            : ['default', 'light', 'dark', 'blue', 'custom'];
         const currentIndex = backgroundOptions.indexOf(this.state.activeBackground);
         const nextIndex = (currentIndex + 1) % backgroundOptions.length;
         const nextOption = backgroundOptions[nextIndex];
@@ -230,7 +240,12 @@ class BackgroundFeaturesManager {
             const card = document.createElement('button');
             card.type = 'button';
             card.className = 'background-gallery-card';
-            card.innerHTML = `<img src="${imageUrl}" alt="Fundo salvo ${index + 1}"><span>Fundo ${index + 1}</span>`;
+            const image = document.createElement('img');
+            image.src = imageUrl;
+            image.alt = `Fundo salvo ${index + 1}`;
+            const label = document.createElement('span');
+            label.textContent = `Fundo ${index + 1}`;
+            card.append(image, label);
             card.addEventListener('click', () => {
                 this.applyBackground('custom', imageUrl);
                 this.closeGallery();

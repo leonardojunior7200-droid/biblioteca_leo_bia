@@ -9,12 +9,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     redirect('backup.php');
 }
 
+if (!verify_csrf_token((string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(419);
+    exit('Sessão expirada ou token inválido.');
+}
+
 $filename = basename($_POST['file'] ?? '');
 $backupDirectory = get_backup_directory();
 $backupPath = $backupDirectory . DIRECTORY_SEPARATOR . $filename;
 
 try {
-    if (!preg_match('/^backup-\d{8}-\d{6}\.zip$/', $filename) || !is_file($backupPath)) {
+    if (!preg_match('/^backup-\d{8}-\d{6}\.enc$/', $filename) || !is_file($backupPath)) {
         throw new Exception('O arquivo de backup selecionado não foi encontrado.');
     }
 
@@ -22,8 +27,10 @@ try {
         throw new Exception('A extensão PHP Zip não está habilitada.');
     }
 
+    $temporaryZip = decrypt_backup_file($backupPath);
+
     $zip = new ZipArchive();
-    if ($zip->open($backupPath) !== true) {
+    if ($zip->open($temporaryZip) !== true) {
         throw new Exception('Não foi possível abrir o arquivo de backup.');
     }
 
@@ -43,14 +50,19 @@ try {
         throw new Exception('O banco de dados não foi encontrado no backup.');
     }
 
-    $databasePath = __DIR__ . '/data/library.db';
+    $databasePath = get_private_storage_path('library.db');
     $databaseContents = $zip->getFromName('data/library.db');
     if ($databaseContents === false || file_put_contents($databasePath, $databaseContents, LOCK_EX) === false) {
         throw new Exception('Não foi possível restaurar o banco de dados.');
     }
 
-    $zip->extractTo(__DIR__, array_filter(array_map(fn($i) => $zip->getNameIndex($i), range(0, $zip->numFiles - 1)), fn($entry) => strpos($entry, 'uploads/') === 0));
+    $privateUploadsDirectory = get_private_storage_path('uploads');
+    if (!is_dir($privateUploadsDirectory) && !mkdir($privateUploadsDirectory, 0750, true) && !is_dir($privateUploadsDirectory)) {
+        throw new Exception('Não foi possível preparar a pasta privada de uploads.');
+    }
+    $zip->extractTo(get_private_storage_path(), array_filter(array_map(fn($i) => $zip->getNameIndex($i), range(0, $zip->numFiles - 1)), fn($entry) => strpos($entry, 'uploads/') === 0));
     $zip->close();
+    @unlink($temporaryZip);
     set_flash('Backup restaurado com sucesso.', 'success');
 } catch (Exception $e) {
     if (isset($zip) && $zip instanceof ZipArchive) {

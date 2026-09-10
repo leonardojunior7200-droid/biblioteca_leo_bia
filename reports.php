@@ -103,6 +103,10 @@ $blockedUsers = $db->query('SELECT id, name, email FROM users WHERE blocked = 1 
 $allUsers = $db->query('SELECT id, name, email, blocked, role_id FROM users ORDER BY name')->fetchAll();
 
 if ($export === 'csv') {
+    $csvSafe = static function (mixed $value): string {
+        $value = (string)$value;
+        return preg_match('/^[=+\-@]/', $value) === 1 ? "'" . $value : $value;
+    };
     $rows = [];
     if ($reportType === 'books') {
         $rows = $allBooks;
@@ -119,11 +123,11 @@ if ($export === 'csv') {
     fputcsv($output, $headers);
     foreach ($rows as $row) {
         if ($reportType === 'books') {
-            fputcsv($output, [$row['id'], $row['title'], $row['author'], $row['category'], $row['quantity'], $row['shelf']]);
+            fputcsv($output, array_map($csvSafe, [$row['id'], $row['title'], $row['author'], $row['category'], $row['quantity'], $row['shelf']]));
         } elseif ($reportType === 'users') {
-            fputcsv($output, [$row['id'], $row['name'], $row['email'], $row['blocked'] ? 'Sim' : 'Não']);
+            fputcsv($output, array_map($csvSafe, [$row['id'], $row['name'], $row['email'], $row['blocked'] ? 'Sim' : 'Não']));
         } else {
-            fputcsv($output, [$row['id'], $row['user_name'], $row['book_title'], $row['loaned_at'], $row['due_date']]);
+            fputcsv($output, array_map($csvSafe, [$row['id'], $row['user_name'], $row['book_title'], $row['loaned_at'], $row['due_date']]));
         }
     }
     rewind($output);
@@ -165,33 +169,7 @@ if ($export === 'pdf') {
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
-    <aside class="dashboard-sidebar">
-        <div>
-            <div class="sidebar-brand">
-                <div class="brand-mark">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8.25A2.5 2.5 0 0 1 17.25 6.5v11A2.5 2.5 0 0 1 14.75 20H6.5A2.5 2.5 0 0 1 4 17.5z"></path>
-                        <path d="M9 4v16"></path>
-                        <path d="M20 7v10"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h2>Biblioteca Escolar</h2>
-                    <p>Relatórios e métricas</p>
-                </div>
-            </div>
-            <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
-                <a class="nav-item active" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
-                <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
-                <a class="nav-item" href="register.php"><span class="nav-icon">◌</span><span>Usuários</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
-            </nav>
-        </div>
-    </aside>
+    <?php $sidebarActive = 'reports.php'; $sidebarSubtitle = 'Relatórios e métricas'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">

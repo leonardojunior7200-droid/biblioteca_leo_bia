@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();
+require_role(['Administrador', 'Bibliotecário']);
 
 if (user_has_role('Aluno')) {
     redirect('student_dashboard.php');
@@ -43,60 +44,7 @@ try {
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
-    <aside class="dashboard-sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-mark">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8.25A2.5 2.5 0 0 1 17.25 6.5v11A2.5 2.5 0 0 1 14.75 20H6.5A2.5 2.5 0 0 1 4 17.5z"></path>
-                    <path d="M9 4v16"></path>
-                    <path d="M20 7v10"></path>
-                </svg>
-            </div>
-            <div>
-                <h2>Biblioteca Escolar</h2>
-                <p>Admin Console</p>
-            </div>
-        </div>
-
-        <nav class="sidebar-nav" aria-label="Menu principal">
-            <a class="nav-item active" href="<?php echo h(base_url('dashboard.php')); ?>">
-                <span class="nav-icon">◉</span>
-                <span>Dashboard</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('index.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Catálogo</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('loans.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Empréstimos</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('reservations.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Reservas</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('reports.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Relatórios</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('books.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Livros</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('users.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Usuários & Pais</span>
-            </a>
-            <a class="nav-item" href="<?php echo h(base_url('backup.php')); ?>">
-                <span class="nav-icon">◌</span>
-                <span>Backups</span>
-            </a>
-            <a class="sidebar-logout nav-item" href="<?php echo h(base_url('logout.php')); ?>">
-                <span class="nav-icon">↩</span>
-                <span>Sair</span>
-            </a>
-        </nav>
-    </aside>
+    <?php $sidebarActive = 'dashboard.php'; $sidebarSubtitle = 'Admin Console'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">
@@ -106,6 +54,7 @@ require_once __DIR__ . '/includes/header.php';
                 <p class="topbar-subtitle">Bem-vindo ao sistema da biblioteca</p>
             </div>
             <div class="topbar-actions">
+                <a href="<?php echo h(base_url('users.php?new_student=1')); ?>" class="primary-btn" style="text-decoration: none;">+ Cadastrar aluno</a>
                 <button class="topbar-icon" type="button" aria-label="Notificações">🔔</button>
                 <div class="topbar-user">
                     <img src="<?php echo h($displayPhoto); ?>" alt="Avatar do usuário">

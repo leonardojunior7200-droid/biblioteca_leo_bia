@@ -4,7 +4,9 @@
 // Database settings. By default, use SQLite in data/library.db.
 // To use MySQL, update DB_DSN, DB_USER and DB_PASS accordingly.
 
-define('DB_DSN', 'sqlite:' . __DIR__ . '/data/library.db');
+// Dados privados devem ficar fora do document root do servidor web.
+define('PRIVATE_STORAGE_PATH', getenv('BIBLIOTECA_PRIVATE_STORAGE') ?: dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'biblioteca-private');
+define('DB_DSN', 'sqlite:' . PRIVATE_STORAGE_PATH . DIRECTORY_SEPARATOR . 'library.db');
 define('DB_USER', null);
 define('DB_PASS', null);
 

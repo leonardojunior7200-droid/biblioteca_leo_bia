@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();
+require_role(['Administrador', 'Bibliotecário', 'Aluno']);
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 $db = get_db();
@@ -15,7 +16,12 @@ if (empty($pdfPath)) {
     exit;
 }
 
-$fullPath = __DIR__ . '/' . $pdfPath;
+$fullPath = str_starts_with($pdfPath, 'private:')
+    ? get_private_storage_path(substr($pdfPath, strlen('private:')))
+    : __DIR__ . '/' . ltrim($pdfPath, '/\\');
+if (!is_file($fullPath)) {
+    $fullPath = get_private_storage_path('uploads/books/' . basename($pdfPath));
+}
 if (!is_file($fullPath)) {
     http_response_code(404);
     echo '<h1>Arquivo PDF não encontrado</h1>';

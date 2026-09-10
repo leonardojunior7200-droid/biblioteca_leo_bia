@@ -6,17 +6,23 @@ require_login();
 require_role(['Administrador', 'Bibliotecário']);
 
 $db = get_db();
-$action = $_GET['action'] ?? '';
+$csrfToken = csrf_token();
+$action = $_POST['action'] ?? '';
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 $error = null;
 $selectedUserId = 0;
 $selectedBookId = 0;
 $selectedLoanDays = LOAN_DAYS;
 
-$userSearch = trim($_REQUEST['user_search'] ?? '');
-$bookSearch = trim($_REQUEST['book_search'] ?? '');
+$userSearch = trim($_GET['user_search'] ?? $_POST['user_search'] ?? '');
+$bookSearch = trim($_GET['book_search'] ?? $_POST['book_search'] ?? '');
 
-if ($action === 'return' && $id) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token((string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(419);
+    exit('Sessão expirada ou token inválido.');
+}
+
+if ($action === 'return' && ($id = require_positive_int($_POST['id'] ?? null))) {
     $loan = $db->prepare('SELECT l.*, u.id AS user_id, u.blocked FROM loans l JOIN users u ON l.user_id = u.id WHERE l.id = :id AND l.returned_at IS NULL');
     $loan->execute([':id' => $id]);
     $loan = $loan->fetch();
@@ -136,33 +142,7 @@ $availableBooks = (int)$db->query('SELECT COUNT(*) FROM books WHERE quantity > 0
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
-    <aside class="dashboard-sidebar">
-        <div>
-            <div class="sidebar-brand">
-                <div class="brand-mark">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8.25A2.5 2.5 0 0 1 17.25 6.5v11A2.5 2.5 0 0 1 14.75 20H6.5A2.5 2.5 0 0 1 4 17.5z"></path>
-                        <path d="M9 4v16"></path>
-                        <path d="M20 7v10"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h2>Biblioteca Escolar</h2>
-                    <p>Gestão de empréstimos</p>
-                </div>
-            </div>
-            <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
-                <a class="nav-item active" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
-                <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
-                <a class="nav-item" href="users.php"><span class="nav-icon">◌</span><span>Usuários & Pais</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
-            </nav>
-        </div>
-    </aside>
+    <?php $sidebarActive = 'loans.php'; $sidebarSubtitle = 'Gestão de empréstimos'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">
@@ -240,6 +220,7 @@ require_once __DIR__ . '/includes/header.php';
                 </form>
 
                 <form method="post" action="loans.php" class="loan-form">
+                    <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
                     <input type="hidden" name="user_search" value="<?php echo h($userSearch); ?>">
                     <input type="hidden" name="book_search" value="<?php echo h($bookSearch); ?>">
                     <div class="field-group">
@@ -359,7 +340,12 @@ require_once __DIR__ . '/includes/header.php';
                                     </td>
                                     <td>
                                         <?php if (!$loan['returned_at']): ?>
-                                            <a class="action-link" href="loans.php?action=return&id=<?php echo (int)$loan['id']; ?>" onclick="return confirm('Registrar devolução?');">Devolver</a>
+                                            <form method="post" action="loans.php" style="display:inline; margin:0;" onsubmit="return confirm('Registrar devolução?');">
+                                                <input type="hidden" name="action" value="return">
+                                                <input type="hidden" name="id" value="<?php echo (int)$loan['id']; ?>">
+                                                <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                                <button type="submit" class="action-link" style="border:0; background:none; padding:0; cursor:pointer;">Devolver</button>
+                                            </form>
                                         <?php else: ?>
                                             <span class="action-muted">-</span>
                                         <?php endif; ?>

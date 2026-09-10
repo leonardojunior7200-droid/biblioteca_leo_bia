@@ -4,12 +4,17 @@ require_once __DIR__ . '/includes/functions.php';
 require_login();
 
 $db = get_db();
-$action = $_GET['action'] ?? '';
-$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$csrfToken = csrf_token();
+$action = $_POST['action'] ?? '';
+$id = require_positive_int($_POST['id'] ?? null);
 $error = null;
 
-if ($action === 'reserve' && isset($_GET['book_id'])) {
-    $bookId = (int)$_GET['book_id'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf_token((string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(419);
+    exit('Sessão expirada ou token inválido.');
+}
+
+if ($action === 'reserve' && ($bookId = require_positive_int($_POST['book_id'] ?? null))) {
     $user = current_user();
 
     if ($bookId <= 0) {
@@ -51,6 +56,7 @@ $books = $db->query('SELECT id, title, quantity, cover_path FROM books ORDER BY 
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
+    <?php if (user_has_role('Aluno')): ?>
     <aside class="dashboard-sidebar">
         <div>
             <div class="sidebar-brand">
@@ -63,21 +69,22 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
                 <div>
                     <h2>Biblioteca Escolar</h2>
-                    <p>Gestão de reservas</p>
+                    <p><?php echo user_has_role('Aluno') ? 'Área do aluno' : 'Gestão de reservas'; ?></p>
                 </div>
             </div>
             <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
-                <a class="nav-item active" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
-                <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
-                <a class="nav-item" href="register.php"><span class="nav-icon">◌</span><span>Usuários</span></a>
+                    <a class="nav-item" href="student_dashboard.php"><span class="nav-icon">◉</span><span>Início</span></a>
+                    <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Livros</span></a>
+                    <a class="nav-item" href="student_dashboard.php?section=emprestimos"><span class="nav-icon">◌</span><span>Meus empréstimos</span></a>
+                    <a class="nav-item active" href="reservations.php"><span class="nav-icon">◌</span><span>Minhas reservas</span></a>
+                    <a class="nav-item" href="student_dashboard.php?section=perfil"><span class="nav-icon">◌</span><span>Meu perfil</span></a>
                 <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
             </nav>
         </div>
     </aside>
+    <?php else: ?>
+        <?php $sidebarActive = 'reservations.php'; $sidebarSubtitle = 'Gestão de reservas'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
+    <?php endif; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">
@@ -122,7 +129,14 @@ require_once __DIR__ . '/includes/header.php';
                                 </td>
                                 <td><?php echo h($book['title']); ?></td>
                                 <td><?php echo (int)$book['quantity']; ?></td>
-                                <td><a class="action-link" href="reservations.php?action=reserve&book_id=<?php echo (int)$book['id']; ?>">Reservar</a></td>
+                                <td>
+                                    <form method="post" action="reservations.php" style="display:inline; margin:0;">
+                                        <input type="hidden" name="action" value="reserve">
+                                        <input type="hidden" name="book_id" value="<?php echo (int)$book['id']; ?>">
+                                        <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                        <button type="submit" class="action-link" style="border:0; background:none; padding:0; cursor:pointer;">Reservar</button>
+                                    </form>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -164,7 +178,12 @@ require_once __DIR__ . '/includes/header.php';
                                     <?php if (user_has_role(['Administrador', 'Bibliotecário'])): ?>
                                         <td>
                                             <?php if (!$reservation['fulfilled_at']): ?>
-                                                <a class="action-link" href="reservations.php?action=fulfill&id=<?php echo (int)$reservation['id']; ?>">Cumprir</a>
+                                                <form method="post" action="reservations.php" style="display:inline; margin:0;">
+                                                    <input type="hidden" name="action" value="fulfill">
+                                                    <input type="hidden" name="id" value="<?php echo (int)$reservation['id']; ?>">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
+                                                    <button type="submit" class="action-link" style="border:0; background:none; padding:0; cursor:pointer;">Cumprir</button>
+                                                </form>
                                             <?php else: ?>
                                                 -
                                             <?php endif; ?>

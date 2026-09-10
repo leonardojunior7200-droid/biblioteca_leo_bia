@@ -24,13 +24,14 @@ if ($user) {
 </head>
 <?php
 $pageName = basename($_SERVER['PHP_SELF'] ?? 'index.php');
-$dashboardPages = ['index.php', 'dashboard.php', 'books.php', 'loans.php', 'reservations.php', 'reports.php', 'register.php', 'users.php', 'backup.php'];
+$dashboardPages = ['index.php', 'dashboard.php', 'student_dashboard.php', 'books.php', 'loans.php', 'reservations.php', 'reports.php', 'register.php', 'users.php', 'backup.php'];
 $bodyClass = in_array($pageName, $dashboardPages, true) ? 'dashboard-page' : '';
 if ($pageName === 'login.php') {
     $bodyClass = 'login-landing-page';
 }
 ?>
-<body class="<?php echo h($bodyClass); ?>">
+<body class="<?php echo h($bodyClass . ($pageName === 'student_dashboard.php' ? ' student-dashboard-page' : '')); ?>">
+<?php if ($pageName !== 'login.php'): ?>
 <header>
     <div class="brand"><a href="<?php echo h(base_url('index.php')); ?>"><?php echo h(SITE_NAME); ?></a></div>
     <nav>
@@ -43,15 +44,18 @@ if ($pageName === 'login.php') {
         <?php if ($pageName !== 'login.php'): ?>
             <button id="theme-toggle" type="button">Tema escuro</button>
             <button id="background-toggle" type="button">Fundo: padrão</button>
-            <button id="background-photo-button" type="button">Fundo personalizado</button>
-            <button id="background-gallery-toggle" type="button">Meus fundos</button>
-            <button id="background-remover-toggle" type="button">Remover fundo</button>
-            <input id="background-photo-input" type="file" accept="image/*" style="display: none;">
+            <?php if (!$user || !user_has_role('Aluno')): ?>
+                <button id="background-photo-button" type="button">Fundo personalizado</button>
+                <button id="background-gallery-toggle" type="button">Meus fundos</button>
+                <button id="background-remover-toggle" type="button">Remover fundo</button>
+                <input id="background-photo-input" type="file" accept="image/*" style="display: none;">
+            <?php endif; ?>
         <?php endif; ?>
         <a href="<?php echo h(base_url('index.php')); ?>">Catálogo</a>
         <?php if ($user): ?>
             <?php if (user_has_role('Aluno')): ?>
                 <a href="<?php echo h(base_url('student_dashboard.php')); ?>">Painel do Aluno</a>
+                <a href="<?php echo h(base_url('student_dashboard.php?section=perfil')); ?>">Meu perfil</a>
             <?php else: ?>
                 <a href="<?php echo h(base_url('dashboard.php')); ?>">Painel</a>
             <?php endif; ?>
@@ -69,6 +73,7 @@ if ($pageName === 'login.php') {
         <?php endif; ?>
     </nav>
 </header>
+<?php endif; ?>
 <div id="background-gallery" class="background-gallery hidden">
     <div class="background-gallery-inner">
         <div class="background-gallery-header">
@@ -110,6 +115,16 @@ if ($pageName === 'login.php') {
             <div class="bg-remover-info">
                 <strong>Como usar:</strong> Carregue uma imagem, ajuste a sensibilidade e clique em "Aplicar Fundo" para salvar como fundo personalizado.
             </div>
+        </div>
+    </div>
+</div>
+<div id="confirmation-modal" class="confirmation-modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmation-title">
+    <div class="confirmation-modal-inner">
+        <h2 id="confirmation-title">Confirmar ação</h2>
+        <p id="confirmation-message"></p>
+        <div class="confirmation-actions">
+            <button type="button" class="secondary-btn" id="confirmation-cancel">Cancelar</button>
+            <button type="button" class="primary-btn" id="confirmation-accept">Confirmar</button>
         </div>
     </div>
 </div>

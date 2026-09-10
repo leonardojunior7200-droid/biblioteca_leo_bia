@@ -2,6 +2,7 @@
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();
+require_role(['Administrador', 'Bibliotecário']);
 
 $db = get_db();
 ensure_parent_columns();
@@ -28,6 +29,7 @@ $query = 'SELECT
             u.turno AS user_turno,
             u.parent_name AS user_parent_name,
             u.parent_phone AS user_parent_phone,
+            u.parent_phone_2 AS user_parent_phone_2,
             u.parent_email AS user_parent_email,
             u.parent_document AS user_parent_document,
             b.id AS book_id,
@@ -70,12 +72,10 @@ function pdf_escape(string $text): string
 
 function generate_parent_authorization_pdf(array $data): string
 {
-    $parentName = !empty($data['loan_parent_name']) 
-        ? $data['loan_parent_name'] 
-        : (!empty($data['user_parent_name']) ? $data['user_parent_name'] : '__________________________________________________');
-    
-    $parentPhone = !empty($data['user_parent_phone']) ? $data['user_parent_phone'] : 'Não informado';
-    $parentEmail = !empty($data['user_parent_email']) ? $data['user_parent_email'] : 'Não informado';
+    $parentPhone = !empty($data['user_parent_phone']) ? $data['user_parent_phone'] : '';
+    $parentPhone2 = !empty($data['user_parent_phone_2']) ? $data['user_parent_phone_2'] : '';
+    $parentPhones = trim($parentPhone . ($parentPhone2 !== '' ? ' | ' . $parentPhone2 : ''));
+    $parentPhones = $parentPhones !== '' ? $parentPhones : 'Não informado';
     $parentDoc = !empty($data['user_parent_document']) ? $data['user_parent_document'] : '____________________';
 
     $loanDate = format_date($data['loaned_at']);
@@ -106,9 +106,7 @@ function generate_parent_authorization_pdf(array $data): string
     // Bloco 2: Identificação dos Pais / Responsáveis
     $contentLines[] = "BT /F1 11 Tf 0.1 0.3 0.6 rg 40 670 Td (2. DADOS DO RESPONSAVEL LEGAL) Tj ET";
     $contentLines[] = "0 0 0 rg";
-    $contentLines[] = "BT /F1 10 Tf 50 650 Td (" . pdf_escape("Nome do Responsavel: {$parentName}") . ") Tj ET";
-    $contentLines[] = "BT /F1 10 Tf 50 633 Td (" . pdf_escape("Telefone/WhatsApp: {$parentPhone}   |   E-mail: {$parentEmail}") . ") Tj ET";
-    $contentLines[] = "BT /F1 10 Tf 50 616 Td (" . pdf_escape("Documento (RG/CPF): {$parentDoc}") . ") Tj ET";
+    $contentLines[] = "BT /F1 10 Tf 50 650 Td (" . pdf_escape("Numeros dos Responsaveis: {$parentPhones}") . ") Tj ET";
 
     // Bloco 3: Dados do Livro Retirado
     $contentLines[] = "BT /F1 11 Tf 0.1 0.3 0.6 rg 40 588 Td (3. DADOS DA OBRA EMPRESTADA) Tj ET";

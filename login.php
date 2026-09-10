@@ -2,31 +2,56 @@
 require_once __DIR__ . '/includes/auth.php'; 
 require_once __DIR__ . '/includes/functions.php'; 
 
-if (is_logged_in()) { 
-    redirect('dashboard.php'); 
-} 
+if (is_logged_in()) {
+    $current = current_user();
+    $redirectPage = user_has_role('Aluno') ? 'student_dashboard.php' : 'dashboard.php';
+    redirect($redirectPage);
+}
 
 $email = ''; 
+$matricula = ''; 
 $error = null; 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') { 
-    $email = trim($_POST['email'] ?? ''); 
-    $password = trim($_POST['password'] ?? ''); 
+    $email = trim((string)($_POST['email'] ?? '')); 
+    $matricula = trim((string)($_POST['matricula'] ?? '')); 
+    $password = trim((string)($_POST['password'] ?? '')); 
     
-    if ($email === '' || $password === '') { 
-        $error = 'Informe email e senha.'; 
+    if (($email === '' && $matricula === '') || $password === '') { 
+        $error = 'Informe a matrícula do aluno ou o e-mail do administrador e a senha.'; 
     } else { 
         $db = get_db(); 
-        $stmt = $db->prepare('SELECT id, password FROM users WHERE email = :email LIMIT 1'); 
-        $stmt->execute([':email' => $email]); 
-        $user = $stmt->fetch(); 
+        $user = null;
+
+        if ($email !== '') {
+            $emailStmt = $db->prepare('SELECT u.id, u.password, u.blocked, r.name AS role_name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.email = :email LIMIT 1');
+            $emailStmt->execute([':email' => $email]);
+            $emailUser = $emailStmt->fetch();
+
+            if ($emailUser && $emailUser['role_name'] === 'Aluno') {
+                $error = 'Alunos devem entrar usando a matrícula, não o e-mail.';
+            } elseif ($emailUser && $emailUser['role_name'] === 'Administrador') {
+                $user = $emailUser;
+            }
+        }
+
+        if ($error === null && $user === null && $matricula !== '') {
+            $matriculaStmt = $db->prepare("SELECT u.id, u.password, u.blocked, r.name AS role_name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.matricula = :matricula AND r.name = 'Aluno' LIMIT 1");
+            $matriculaStmt->execute([':matricula' => $matricula]);
+            $user = $matriculaStmt->fetch();
+        }
         
-        if ($user && password_verify($password, $user['password'])) { 
-            login_user((int)$user['id']); 
-            set_flash('Login efetuado com sucesso.'); 
-            redirect('dashboard.php'); 
-        } 
-        $error = 'Email ou senha inválidos.'; 
+        if ($user && password_verify($password, $user['password'])) {
+            if (!empty($user['blocked'])) {
+                $error = 'Esta conta está bloqueada pelo administrador.';
+            } else {
+                login_user((int)$user['id']);
+                set_flash('Login efetuado com sucesso.');
+                redirect(($user['role_name'] ?? 'Administrador') === 'Aluno' ? 'student_dashboard.php' : 'dashboard.php');
+            }
+        } else {
+            $error = 'Matrícula, e-mail do administrador ou senha inválidos.';
+        }
     } 
 } 
 
@@ -41,17 +66,18 @@ require_once __DIR__ . '/includes/header.php';
     .login-page-container {
         display: flex;
         justify-content: center;
-        align-items: center;
-        padding: 60px 20px;
+        align-items: flex-start;
+        padding: 32px 20px 48px;
         box-sizing: border-box;
-        min-height: calc(100vh - 160px); /* Garante espaço dinâmico para header/footer */
+        min-height: calc(100vh - 80px);
     }
 
     /* CARD DE LOGIN CENTRALIZADO - IDÊNTICO À FOTO */
     .login-card {
         display: flex;
         width: 850px;
-        height: 520px;
+        min-height: 520px;
+        height: auto;
         background-color: #0c1a30; /* Cor azul marinho exata do painel */
         border: 1px solid #172a45; /* Cor exata da borda azul fina */
         border-radius: 12px;
@@ -113,10 +139,10 @@ require_once __DIR__ . '/includes/header.php';
     /* Lado Direito - Formulário */
     .form-section {
         width: 60%;
-        padding: 50px 60px;
+        padding: 42px 60px;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: flex-start;
         box-sizing: border-box;
     }
 
@@ -285,10 +311,18 @@ require_once __DIR__ . '/includes/header.php';
 
             <form method="post" action="<?php echo h(base_url('login.php')); ?>"> 
                 <div class="input-block"> 
-                    <label for="email">Email</label> 
+                    <label for="email">E-mail do administrador</label> 
                     <div class="field-container">
                         <i class="fa-regular fa-user input-icon"></i>
-                        <input type="email" id="email" name="email" value="<?php echo h($email); ?>" placeholder="Digite seu email" required> 
+                        <input type="email" id="email" name="email" value="<?php echo h($email); ?>" placeholder="Somente administradores"> 
+                    </div>
+                </div>
+
+                <div class="input-block"> 
+                    <label for="matricula">Matrícula do aluno</label> 
+                    <div class="field-container">
+                        <i class="fa-solid fa-id-card input-icon"></i>
+                        <input type="text" id="matricula" name="matricula" value="<?php echo h($matricula); ?>" placeholder="Digite sua matrícula"> 
                     </div>
                 </div> 
 

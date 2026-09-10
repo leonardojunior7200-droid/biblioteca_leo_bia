@@ -6,6 +6,9 @@ function get_db(): PDO
     static $db = null;
 
     if ($db === null) {
+        if (!is_dir(PRIVATE_STORAGE_PATH) && !mkdir(PRIVATE_STORAGE_PATH, 0750, true) && !is_dir(PRIVATE_STORAGE_PATH)) {
+            throw new RuntimeException('Não foi possível preparar o armazenamento privado.');
+        }
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -89,6 +92,59 @@ function ensure_user_turno_column(): void
         $db->exec('ALTER TABLE users ADD COLUMN turno TEXT');
     }
 }
+
+function ensure_user_matricula_column(): void
+{
+    $db = get_db();
+
+    try {
+        $columns = $db->query('PRAGMA table_info(users)')->fetchAll();
+    } catch (Exception $e) {
+        return;
+    }
+
+    $hasColumn = false;
+    foreach ($columns as $column) {
+        if (($column['name'] ?? '') === 'matricula') {
+            $hasColumn = true;
+            break;
+        }
+    }
+
+    if (!$hasColumn) {
+        $db->exec('ALTER TABLE users ADD COLUMN matricula TEXT');
+    }
+
+    try {
+        $db->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_matricula ON users (matricula) WHERE matricula IS NOT NULL AND matricula <> \'\'');
+    } catch (Exception $e) {
+        // Mantém a migração compatível com bancos antigos que tenham duplicidades.
+    }
+
+    $db->exec("UPDATE users SET matricula = 'MAT-TESTE-001' WHERE email = 'aluno@biblioteca.local' AND (matricula IS NULL OR matricula = '')");
+}
+
+function ensure_user_profile_completed_column(): void
+{
+    $db = get_db();
+
+    try {
+        $columns = $db->query('PRAGMA table_info(users)')->fetchAll();
+    } catch (Exception $e) {
+        return;
+    }
+
+    foreach ($columns as $column) {
+        if (($column['name'] ?? '') === 'profile_completed') {
+            return;
+        }
+    }
+
+    $db->exec('ALTER TABLE users ADD COLUMN profile_completed INTEGER NOT NULL DEFAULT 0');
+    $db->exec("UPDATE users SET profile_completed = 1 WHERE matricula IS NULL OR matricula = ''");
+    $db->exec("UPDATE users SET profile_completed = 1 WHERE email = 'aluno@biblioteca.local'");
+}
+
 function ensure_book_pdf_column(): void
 {
     $db = get_db();
@@ -171,6 +227,9 @@ function ensure_parent_columns(): void
         }
         if (!in_array('parent_phone', $userColNames, true)) {
             $db->exec('ALTER TABLE users ADD COLUMN parent_phone TEXT');
+        }
+        if (!in_array('parent_phone_2', $userColNames, true)) {
+            $db->exec('ALTER TABLE users ADD COLUMN parent_phone_2 TEXT');
         }
         if (!in_array('parent_email', $userColNames, true)) {
             $db->exec('ALTER TABLE users ADD COLUMN parent_email TEXT');

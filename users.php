@@ -12,6 +12,69 @@ $error = null;
 $search = trim((string)($_GET['search'] ?? ''));
 $filterTurma = trim((string)($_GET['turma'] ?? ''));
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_student') {
+    $postCsrf = trim((string)($_POST['csrf_token'] ?? ''));
+    if (!verify_csrf_token($postCsrf)) {
+        http_response_code(419);
+        set_flash('Sessão expirada ou token inválido.', 'error');
+        redirect('users.php');
+    }
+
+    $studentName = trim((string)($_POST['student_name'] ?? ''));
+    $studentMatricula = trim((string)($_POST['student_matricula'] ?? ''));
+    $studentEmail = trim((string)($_POST['student_email'] ?? ''));
+    $studentPassword = trim((string)($_POST['student_password'] ?? ''));
+    $studentConfirmPassword = trim((string)($_POST['student_confirm_password'] ?? ''));
+    $studentTurma = trim((string)($_POST['student_turma'] ?? ''));
+    $studentTurno = trim((string)($_POST['student_turno'] ?? ''));
+    $studentParentName = trim((string)($_POST['student_parent_name'] ?? ''));
+    $studentParentPhone = trim((string)($_POST['student_parent_phone'] ?? ''));
+    $studentParentEmail = trim((string)($_POST['student_parent_email'] ?? ''));
+
+    if ($studentName === '' || $studentMatricula === '' || $studentPassword === '' || $studentConfirmPassword === '' || $studentTurma === '' || $studentTurno === '') {
+        $error = 'Preencha todos os campos obrigatórios do cadastro do aluno.';
+    } elseif (strlen($studentPassword) < 6) {
+        $error = 'A senha do aluno deve ter pelo menos 6 caracteres.';
+    } elseif ($studentPassword !== $studentConfirmPassword) {
+        $error = 'As senhas do aluno não conferem.';
+    } else {
+        $studentEmail = 'matricula-' . hash('sha256', strtolower($studentMatricula)) . '@local.invalid';
+        $existingMatricula = $db->prepare('SELECT id FROM users WHERE matricula = :matricula LIMIT 1');
+        $existingMatricula->execute([':matricula' => $studentMatricula]);
+        if ($existingMatricula->fetch()) {
+            $error = 'Esta matrícula já está cadastrada no sistema.';
+        }
+        $existing = $db->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+        $existing->execute([':email' => $studentEmail]);
+        if (!$error && $existing->fetch()) {
+            $error = 'Este e-mail já está cadastrado no sistema.';
+        } else {
+            $roleStmt = $db->prepare('SELECT id FROM roles WHERE name = :name LIMIT 1');
+            $roleStmt->execute([':name' => 'Aluno']);
+            $role = $roleStmt->fetch();
+            if (!$role) {
+                $error = 'Não foi possível localizar o papel de aluno.';
+            } else {
+                $stmt = $db->prepare('INSERT INTO users (name, email, password, role_id, matricula, turma, turno, parent_name, parent_phone, parent_email, blocked) VALUES (:name, :email, :password, :role_id, :matricula, :turma, :turno, :parent_name, :parent_phone, :parent_email, 0)');
+                $stmt->execute([
+                    ':name' => $studentName,
+                    ':email' => $studentEmail,
+                    ':password' => password_hash($studentPassword, PASSWORD_DEFAULT),
+                    ':role_id' => (int)$role['id'],
+                    ':matricula' => $studentMatricula,
+                    ':turma' => $studentTurma,
+                    ':turno' => $studentTurno,
+                    ':parent_name' => $studentParentName !== '' ? $studentParentName : null,
+                    ':parent_phone' => $studentParentPhone !== '' ? $studentParentPhone : null,
+                    ':parent_email' => $studentParentEmail !== '' ? $studentParentEmail : null,
+                ]);
+                set_flash('Aluno cadastrado com sucesso e já pode fazer login no painel do aluno.');
+                redirect('users.php');
+            }
+        }
+    }
+}
+
 $turmas = [
     '6º Ano A', '6º Ano B',
     '7º Ano A', '7º Ano B',
@@ -35,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
     $targetUserId = require_positive_int($_POST['user_id'] ?? null) ?? 0;
     $name = trim((string)($_POST['name'] ?? ''));
+    $matricula = trim((string)($_POST['matricula'] ?? ''));
     $email = trim((string)($_POST['email'] ?? ''));
     $turma = trim((string)($_POST['turma'] ?? ''));
     $turno = trim((string)($_POST['turno'] ?? ''));
@@ -43,12 +107,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $parentEmail = trim((string)($_POST['parent_email'] ?? ''));
     $parentDoc = trim((string)($_POST['parent_document'] ?? ''));
     $blocked = isset($_POST['blocked']) ? 1 : 0;
+    $roleStmt = $db->prepare('SELECT r.name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = :id LIMIT 1');
+    $roleStmt->execute([':id' => $targetUserId]);
+    $isStudent = $roleStmt->fetchColumn() === 'Aluno';
 
-    if ($targetUserId > 0 && $name !== '' && $email !== '') {
-        $stmt = $db->prepare('UPDATE users SET name = :name, email = :email, turma = :turma, turno = :turno, parent_name = :parent_name, parent_phone = :parent_phone, parent_email = :parent_email, parent_document = :parent_doc, blocked = :blocked WHERE id = :id');
+    if ($targetUserId > 0 && $name !== '' && $email !== '' && ($matricula !== '' || !$isStudent)) {
+        $duplicate = $db->prepare('SELECT id FROM users WHERE matricula = :matricula AND id <> :id LIMIT 1');
+        $duplicate->execute([':matricula' => $matricula, ':id' => $targetUserId]);
+        if ($duplicate->fetch()) {
+            $error = 'Esta matrícula já está cadastrada no sistema.';
+        }
+    }
+
+    if ($targetUserId > 0 && $name !== '' && $email !== '' && ($matricula !== '' || !$isStudent) && $error === null) {
+        $stmt = $db->prepare('UPDATE users SET name = :name, email = :email, matricula = :matricula, turma = :turma, turno = :turno, parent_name = :parent_name, parent_phone = :parent_phone, parent_email = :parent_email, parent_document = :parent_doc, blocked = :blocked WHERE id = :id');
         $stmt->execute([
             ':name' => $name,
             ':email' => $email,
+            ':matricula' => $matricula,
             ':turma' => $turma !== '' ? $turma : null,
             ':turno' => $turno !== '' ? $turno : null,
             ':parent_name' => $parentName !== '' ? $parentName : null,
@@ -61,13 +137,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         set_flash('Dados do usuário e dos responsáveis atualizados com sucesso.');
         redirect('users.php' . ($search ? '?search=' . urlencode($search) : ''));
     } else {
-        $error = 'Por favor, preencha os campos obrigatórios.';
+        $error = $error ?? 'Por favor, preencha os campos obrigatórios.';
     }
 }
 
 // Alteração rápida de bloqueio
-if (isset($_GET['toggle_block'])) {
-    $toggleId = require_positive_int($_GET['toggle_block'] ?? null);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'toggle_block') {
+    if (!verify_csrf_token((string)($_POST['csrf_token'] ?? ''))) {
+        http_response_code(419);
+        exit('Sessão expirada ou token inválido.');
+    }
+    $toggleId = require_positive_int($_POST['user_id'] ?? null);
     if ($toggleId === null) {
         set_flash('Identificador do usuário inválido.', 'error');
         redirect('users.php');
@@ -111,33 +191,7 @@ if ($editUserId > 0) {
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
-    <aside class="dashboard-sidebar">
-        <div>
-            <div class="sidebar-brand">
-                <div class="brand-mark">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8.25A2.5 2.5 0 0 1 17.25 6.5v11A2.5 2.5 0 0 1 14.75 20H6.5A2.5 2.5 0 0 1 4 17.5z"></path>
-                        <path d="M9 4v16"></path>
-                        <path d="M20 7v10"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h2>Biblioteca Escolar</h2>
-                    <p>Gestão de Usuários e Pais</p>
-                </div>
-            </div>
-            <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
-                <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
-                <a class="nav-item active" href="users.php"><span class="nav-icon">◌</span><span>Usuários e Responsáveis</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
-            </nav>
-        </div>
-    </aside>
+    <?php $sidebarActive = 'users.php'; $sidebarSubtitle = 'Gestão de Usuários e Pais'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">
@@ -147,12 +201,79 @@ require_once __DIR__ . '/includes/header.php';
                 <p class="topbar-subtitle">Gerencie alunos, contatos de pais/responsáveis e autorizações de empréstimos.</p>
             </div>
             <div class="topbar-actions">
-                <a href="register.php" class="primary-btn" style="text-decoration: none;">+ Novo Aluno</a>
+                <a href="users.php?new_student=1" class="primary-btn" style="text-decoration: none;">+ Cadastrar aluno</a>
             </div>
         </header>
 
         <?php if ($error): ?>
             <div class="flash error"><?php echo h($error); ?></div>
+        <?php endif; ?>
+
+        <?php if (isset($_GET['new_student']) || !empty($_SESSION['flash'])): ?>
+            <section class="panel" id="student-form">
+                <div class="panel-header">
+                    <div>
+                        <p class="panel-eyebrow">Cadastro do aluno</p>
+                        <h2>Cadastrar aluno no sistema</h2>
+                    </div>
+                </div>
+                <form method="post" action="users.php" class="loan-form">
+                    <input type="hidden" name="action" value="create_student">
+                    <input type="hidden" name="csrf_token" value="<?php echo h(csrf_token()); ?>">
+
+                    <div class="field-group">
+                        <label for="student_name">Nome do aluno *</label>
+                        <input type="text" id="student_name" name="student_name" value="" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_matricula">Matrícula do aluno *</label>
+                        <input type="text" id="student_matricula" name="student_matricula" value="" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_turma">Turma *</label>
+                        <select id="student_turma" name="student_turma" required>
+                            <option value="">Selecione a turma</option>
+                            <?php foreach ($turmas as $t): ?>
+                                <option value="<?php echo h($t); ?>"><?php echo h($t); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_turno">Turno *</label>
+                        <select id="student_turno" name="student_turno" required>
+                            <option value="">Selecione o turno</option>
+                            <?php foreach ($turnos as $tu): ?>
+                                <option value="<?php echo h($tu); ?>"><?php echo h($tu); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_password">Senha do aluno *</label>
+                        <input type="password" id="student_password" name="student_password" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_confirm_password">Confirmar senha *</label>
+                        <input type="password" id="student_confirm_password" name="student_confirm_password" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="student_parent_name">Nome do responsável</label>
+                        <input type="text" id="student_parent_name" name="student_parent_name" placeholder="Opcional">
+                    </div>
+                    <div class="field-group">
+                        <label for="student_parent_phone">Telefone do responsável</label>
+                        <input type="text" id="student_parent_phone" name="student_parent_phone" placeholder="Opcional">
+                    </div>
+                    <div class="field-group">
+                        <label for="student_parent_email">E-mail do responsável</label>
+                        <input type="email" id="student_parent_email" name="student_parent_email" placeholder="Opcional">
+                    </div>
+
+                    <div style="grid-column: 1 / -1; display: flex; gap: 1rem; margin-top: 1rem;">
+                        <button type="submit" class="primary-btn">Salvar cadastro do aluno</button>
+                        <a href="users.php" class="secondary-btn" style="text-decoration: none; display: inline-flex; align-items: center;">Cancelar</a>
+                    </div>
+                </form>
+            </section>
         <?php endif; ?>
 
         <?php if ($editUser): ?>
@@ -172,6 +293,10 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="field-group">
                         <label for="name">Nome do Aluno *</label>
                         <input type="text" id="name" name="name" value="<?php echo h($editUser['name']); ?>" required>
+                    </div>
+                    <div class="field-group">
+                        <label for="matricula">Matrícula do Aluno *</label>
+                        <input type="text" id="matricula" name="matricula" value="<?php echo h($editUser['matricula'] ?? ''); ?>" required>
                     </div>
                     <div class="field-group">
                         <label for="email">E-mail do Aluno *</label>
@@ -333,7 +458,9 @@ require_once __DIR__ . '/includes/header.php';
                                     </td>
                                     <td style="white-space: nowrap;">
                                         <a class="action-link" href="users.php?edit=<?php echo (int)$u['id']; ?>" style="margin-right: 0.5rem;">✏️ Editar</a>
-                                        <form method="post" action="users.php?toggle_block=<?php echo (int)$u['id']; ?>" style="display:inline; margin:0;">
+                                        <form method="post" action="users.php" style="display:inline; margin:0;">
+                                            <input type="hidden" name="action" value="toggle_block">
+                                            <input type="hidden" name="user_id" value="<?php echo (int)$u['id']; ?>">
                                             <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
                                             <button type="submit" class="soft-link" onclick="return confirm('Alterar status deste usuário?');" style="background:none; border:none; padding:0; cursor:pointer;">
                                                 <?php echo !empty($u['blocked']) ? 'Desbloquear' : 'Bloquear'; ?>

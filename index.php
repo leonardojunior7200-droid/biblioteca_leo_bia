@@ -23,6 +23,7 @@ try {
 }
 ?>
 <div class="dashboard-shell">
+    <?php if (is_logged_in() && user_has_role('Aluno')): ?>
     <aside class="dashboard-sidebar">
         <div>
             <div class="sidebar-brand">
@@ -35,21 +36,22 @@ try {
                 </div>
                 <div>
                     <h2>Biblioteca Escolar</h2>
-                    <p>Catálogo da biblioteca</p>
+                    <p><?php echo is_logged_in() && user_has_role('Aluno') ? 'Área do aluno' : 'Catálogo da biblioteca'; ?></p>
                 </div>
             </div>
             <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">◉</span><span>Dashboard</span></a>
-                <a class="nav-item active" href="index.php"><span class="nav-icon">◌</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">◌</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">◌</span><span>Relatórios</span></a>
-                <a class="nav-item" href="books.php"><span class="nav-icon">◌</span><span>Livros</span></a>
-                <a class="nav-item" href="register.php"><span class="nav-icon">◌</span><span>Usuários</span></a>
+                    <a class="nav-item" href="student_dashboard.php"><span class="nav-icon">◉</span><span>Início</span></a>
+                    <a class="nav-item active" href="index.php"><span class="nav-icon">◌</span><span>Livros</span></a>
+                    <a class="nav-item" href="student_dashboard.php?section=emprestimos"><span class="nav-icon">◌</span><span>Meus empréstimos</span></a>
+                    <a class="nav-item" href="reservations.php"><span class="nav-icon">◌</span><span>Minhas reservas</span></a>
+                    <a class="nav-item" href="student_dashboard.php?section=perfil"><span class="nav-icon">◌</span><span>Meu perfil</span></a>
                 <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">↩</span><span>Sair</span></a>
             </nav>
         </div>
     </aside>
+    <?php else: ?>
+        <?php $sidebarActive = 'index.php'; $sidebarSubtitle = 'Catálogo da biblioteca'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
+    <?php endif; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">

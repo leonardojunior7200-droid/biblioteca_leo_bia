@@ -2,6 +2,11 @@
 require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 
+if (is_file(get_private_storage_path('library.db'))) {
+    http_response_code(404);
+    exit('Instalação já concluída.');
+}
+
 try {
     $db = get_db();
     ensure_user_profile_photo_column();
@@ -23,16 +28,21 @@ try {
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         role_id INTEGER NOT NULL,
+        matricula TEXT,
+        profile_completed INTEGER NOT NULL DEFAULT 0,
         turma TEXT,
         turno TEXT,
         parent_name TEXT,
         parent_phone TEXT,
+        parent_phone_2 TEXT,
         parent_email TEXT,
         parent_document TEXT,
         blocked INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(role_id) REFERENCES roles(id)
     )');
+    ensure_user_matricula_column();
+    ensure_user_profile_completed_column();
 
     $db->exec('CREATE TABLE IF NOT EXISTS books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,29 +94,41 @@ try {
         $rolesMap[$row['name']] = $row['id'];
     }
 
-    $users = [
-        ['name' => 'Admin Escolar', 'email' => 'admin@biblioteca.local', 'password' => password_hash('admin123', PASSWORD_DEFAULT), 'role' => 'Administrador'],
-        ['name' => 'Bibliotecário', 'email' => 'bibliotecario@biblioteca.local', 'password' => password_hash('biblio123', PASSWORD_DEFAULT), 'role' => 'Bibliotecário'],
-        ['name' => 'Aluno Exemplo', 'email' => 'aluno@biblioteca.local', 'password' => password_hash('aluno123', PASSWORD_DEFAULT), 'role' => 'Aluno'],
-        ['name' => 'Usuário de Teste', 'email' => 'teste@biblioteca.local', 'password' => password_hash('teste123', PASSWORD_DEFAULT), 'role' => 'Visitante'],
+    $initialUsers = [
+        ['name' => 'Admin Escolar', 'email' => 'admin@biblioteca.local', 'role' => 'Administrador'],
+        ['name' => 'Bibliotecário', 'email' => 'bibliotecario@biblioteca.local', 'role' => 'Bibliotecário'],
+        ['name' => 'Aluno Exemplo', 'email' => 'aluno@biblioteca.local', 'role' => 'Aluno', 'matricula' => 'MAT-TESTE-001'],
+        ['name' => 'Usuário de Teste', 'email' => 'teste@biblioteca.local', 'role' => 'Visitante'],
     ];
+    $users = [];
+    $initialCredentialLines = ['Credenciais iniciais geradas em ' . date('Y-m-d H:i:s'), ''];
+    foreach ($initialUsers as $initialUser) {
+        $password = bin2hex(random_bytes(18));
+        $initialUser['password'] = password_hash($password, PASSWORD_DEFAULT);
+        $users[] = $initialUser;
+        $initialCredentialLines[] = $initialUser['email'] . ' | ' . $password;
+    }
 
-    $stmt = $db->prepare('INSERT OR IGNORE INTO users (name, email, password, role_id, blocked) VALUES (:name, :email, :password, :role_id, 0)');
+    $stmt = $db->prepare('INSERT OR IGNORE INTO users (name, email, password, role_id, matricula, blocked) VALUES (:name, :email, :password, :role_id, :matricula, 0)');
     foreach ($users as $user) {
         $stmt->execute([
             ':name' => $user['name'],
             ':email' => $user['email'],
             ':password' => $user['password'],
             ':role_id' => $rolesMap[$user['role']],
+            ':matricula' => $user['matricula'] ?? null,
         ]);
     }
+
+    $db->exec("UPDATE users SET matricula = 'MAT-TESTE-001' WHERE email = 'aluno@biblioteca.local' AND (matricula IS NULL OR matricula = '')");
 
     $db->exec('INSERT OR IGNORE INTO books (title, author, category, isbn, publisher, year, quantity, shelf, internal_code) VALUES
         ("O Pequeno Príncipe", "Antoine de Saint-Exupéry", "Literatura", "9788520014702", "Editora A", 1943, 5, "A1", "BP-001"),
         ("Dom Casmurro", "Machado de Assis", "Literatura", "9788503010334", "Editora B", 1899, 3, "A2", "BP-002"),
         ("Matemática Básica", "José da Silva", "Didático", "9788538000011", "Editora C", 2015, 4, "B1", "BP-003")');
 
-    $message = 'Banco de dados inicializado com sucesso. Use o email admin@biblioteca.local e senha admin123 para entrar.';
+    file_put_contents(get_private_storage_path('initial-credentials.txt'), implode(PHP_EOL, $initialCredentialLines) . PHP_EOL, LOCK_EX);
+    $message = 'Banco de dados inicializado com sucesso. As credenciais iniciais foram salvas no armazenamento privado.';
 } catch (Exception $e) {
     $message = 'Falha ao inicializar o banco de dados: ' . $e->getMessage();
 }

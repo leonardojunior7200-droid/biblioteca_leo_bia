@@ -64,10 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } elseif ($_FILES['cover']['size'] > 2 * 1024 * 1024) {
                     $error = 'A foto deve ter no máximo 2 MB.';
                 } else {
-                    $uploadDir = __DIR__ . '/uploads/books';
-                    if (!is_dir($uploadDir)) {
-                        mkdir($uploadDir, 0777, true);
-                    }
+                    $uploadDir = ensure_upload_directory('uploads/books');
 
                     $extension = match ($mimeType) {
                         'image/jpeg' => '.jpg',
@@ -113,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!move_uploaded_file($_FILES['pdf']['tmp_name'], $destination)) {
                         $error = 'Não foi possível salvar o PDF do livro.';
                     } else {
-                        $pdfPath = 'uploads/books/' . $fileName;
+                        $pdfPath = 'private:uploads/books/' . $fileName;
                     }
                 }
             }
@@ -254,7 +251,7 @@ $searchQuery = '';
 $params = [];
 
 if ($search !== '') {
-    $searchQuery = 'WHERE title LIKE :search OR author LIKE :search OR category LIKE :search OR barcode LIKE :search OR internal_code LIKE :search OR isbn LIKE :search';
+    $searchQuery = 'WHERE title LIKE :search OR author LIKE :search OR category LIKE :search OR shelf LIKE :search OR barcode LIKE :search OR internal_code LIKE :search OR isbn LIKE :search';
     $params[':search'] = '%' . $search . '%';
 }
 
@@ -264,34 +261,7 @@ $books = $books->fetchAll();
 require_once __DIR__ . '/includes/header.php';
 ?>
 <div class="dashboard-shell">
-    <aside class="dashboard-sidebar">
-        <div>
-            <div class="sidebar-brand">
-                <div class="brand-mark">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h8.25A2.5 2.5 0 0 1 17.25 6.5v11A2.5 2.5 0 0 1 14.75 20H6.5A2.5 2.5 0 0 1 4 17.5z"></path>
-                        <path d="M9 4v16"></path>
-                        <path d="M20 7v10"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h2>Biblioteca Escolar</h2>
-                    <p>Gestão de acervo</p>
-                </div>
-            </div>
-            <nav class="sidebar-nav" aria-label="Menu principal">
-                <a class="nav-item" href="dashboard.php"><span class="nav-icon">📊</span><span>Dashboard</span></a>
-                <a class="nav-item" href="index.php"><span class="nav-icon">📚</span><span>Catálogo</span></a>
-                <a class="nav-item" href="loans.php"><span class="nav-icon">📖</span><span>Empréstimos</span></a>
-                <a class="nav-item" href="reservations.php"><span class="nav-icon">📌</span><span>Reservas</span></a>
-                <a class="nav-item" href="reports.php"><span class="nav-icon">📊</span><span>Relatórios</span></a>
-                <a class="nav-item active" href="books.php"><span class="nav-icon">📚</span><span>Livros</span></a>
-                <a class="nav-item" href="books.php?action=add"><span class="nav-icon">➕</span><span>Cadastrar livro</span></a>
-                <a class="nav-item" href="users.php"><span class="nav-icon">👥</span><span>Usuários &amp; Pais</span></a>
-                <a class="sidebar-logout nav-item" href="logout.php"><span class="nav-icon">🚪</span><span>Sair</span></a>
-            </nav>
-        </div>
-    </aside>
+    <?php $sidebarActive = 'books.php'; $sidebarSubtitle = 'Gestão de acervo'; require __DIR__ . '/includes/admin_sidebar.php'; ?>
 
     <div class="dashboard-main-panel">
         <header class="dashboard-topbar">
@@ -338,8 +308,11 @@ require_once __DIR__ . '/includes/header.php';
                         </div>
                         <div class="form-group">
                             <label for="barcode">Código de barras</label>
-                            <input type="text" id="barcode" name="barcode" value="<?php echo h($book['barcode'] ?? ''); ?>" inputmode="numeric" autocomplete="off" placeholder="Aponte o leitor e aguarde o bip">
-                            <small class="muted">Use um leitor USB/Bluetooth como os de supermercado. Ele funciona como teclado e normalmente envia Enter ao terminar.</small>
+                            <div class="barcode-field">
+                                <input type="text" id="barcode" name="barcode" value="<?php echo h($book['barcode'] ?? ''); ?>" inputmode="numeric" autocomplete="off" placeholder="Aponte o leitor e aguarde o bip">
+                                <button type="button" class="secondary-btn" id="barcode-focus" title="Ativar leitura do código de barras">Ler código</button>
+                            </div>
+                            <small class="muted" id="barcode-status">Clique em “Ler código” e depois passe o leitor. O código ficará preenchido neste cadastro.</small>
                         </div>
                         <div class="form-group">
                             <label for="publisher">Editora</label>
@@ -389,6 +362,11 @@ require_once __DIR__ . '/includes/header.php';
                         <h2>Lista de livros</h2>
                         <p class="panel-subtitle">Visualize todos os livros cadastrados e suas ações rápidas.</p>
                     </div>
+                    <form method="get" action="books.php" class="book-search-form">
+                        <label class="sr-only" for="book-search">Pesquisar livro</label>
+                        <input type="search" id="book-search" name="search" value="<?php echo h($search); ?>" placeholder="Pesquisar livro...">
+                        <button type="submit" class="secondary-btn">Pesquisar</button>
+                    </form>
                     <div class="view-toggle" aria-label="Alternar visualização">
                         <button type="button" class="toggle-btn active" data-view="shelf">🗃️ Estante</button>
                         <button type="button" class="toggle-btn" data-view="list">📋 Lista</button>
@@ -460,7 +438,7 @@ require_once __DIR__ . '/includes/header.php';
                                                 <a class="tooltip-btn edit" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>">Editar</a>
                                                 <form method="post" action="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" style="flex:1; margin:0;">
                                                     <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
-                                                    <button type="submit" class="tooltip-btn delete" onclick="return confirm('Tem certeza que deseja excluir este livro?');">Excluir</button>
+                                                    <button type="submit" class="tooltip-btn delete" data-confirm-delete="<?php echo h($item['title']); ?>">Excluir</button>
                                                 </form>
                                             </div>
                                         </div>
@@ -504,7 +482,7 @@ require_once __DIR__ . '/includes/header.php';
                                                     <a class="icon-btn" href="books.php?action=edit&id=<?php echo (int)$item['id']; ?>" title="Editar">✏️</a>
                                                     <form method="post" action="books.php?action=delete&id=<?php echo (int)$item['id']; ?>" style="display:inline; margin:0;">
                                                         <input type="hidden" name="csrf_token" value="<?php echo h($csrfToken); ?>">
-                                                        <button type="submit" class="icon-btn" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este livro?');" style="border:none; background:none; cursor:pointer;">🗑️</button>
+                                                        <button type="submit" class="icon-btn" title="Excluir" data-confirm-delete="<?php echo h($item['title']); ?>" style="border:none; background:none; cursor:pointer;">🗑️</button>
                                                     </form>
                                                     <?php if (!empty($item['pdf_path'])): ?>
                                                         <a class="icon-btn" href="view_book_pdf.php?id=<?php echo (int)$item['id']; ?>" target="_blank" rel="noopener" title="Ver PDF">📄</a>
